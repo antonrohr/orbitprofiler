@@ -76,14 +76,14 @@ class Process {
 
   const std::string GetName() const { return m_Name; }
   const std::string GetFullName() const { return m_FullName; }
-  DWORD GetID() const { return m_ID; }
+  uint32_t GetID() const { return m_ID; }
   double GetCpuUsage() const { return m_CpuUsage; }
   HANDLE GetHandle() const { return m_Handle; }
   bool GetIs64Bit() const { return m_Is64Bit; }
   uint32_t NumModules() const { return (uint32_t)m_Modules.size(); }
   bool GetIsRemote() const { return m_IsRemote; }
   void SetIsRemote(bool val) { m_IsRemote = val; }
-  void SetCpuUsage(float a_Usage) { m_CpuUsage = a_Usage; }
+  void SetCpuUsage(double a_Usage) { m_CpuUsage = a_Usage; }
 
   Function* GetFunctionFromAddress(uint64_t address, bool a_IsExact = true);
   std::shared_ptr<Module> GetModuleFromAddress(DWORD64 a_Address);
@@ -138,7 +138,7 @@ class Process {
   void ClearTransients();
 
  private:
-  DWORD m_ID;
+  uint32_t m_ID;
   HANDLE m_Handle;
   bool m_IsElevated;
 

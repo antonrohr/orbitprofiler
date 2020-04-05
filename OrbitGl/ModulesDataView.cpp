@@ -6,6 +6,7 @@
 
 #include "App.h"
 #include "Core.h"
+#include "OrbitBase/Logging.h"
 #include "OrbitModule.h"
 
 //-----------------------------------------------------------------------------
@@ -189,19 +190,15 @@ void ModulesDataView::OnContextMenu(const std::wstring& a_Action,
       const std::shared_ptr<Module>& module = GetModule(index);
 
       if (module->m_FoundPdb || module->IsDll()) {
-        std::map<uint64_t, std::shared_ptr<Module> >& processModules =
-            m_Process->GetModules();
-        auto it = processModules.find(module->m_AddressStart);
-        if (it != processModules.end()) {
-          std::shared_ptr<Module>& mod = it->second;
+        std::shared_ptr<Module> process_module =
+            m_Process->GetModuleFromAddress(module->m_AddressStart);
+        CHECK(process_module != nullptr);
 
-          if (!mod->GetLoaded()) {
-            GOrbitApp->EnqueueModuleToLoad(mod);
-          }
+        if (!process_module->GetLoaded()) {
+          GOrbitApp->EnqueueModuleToLoad(process_module);
         }
       }
     }
-
     GOrbitApp->LoadModules();
   } else if (a_Action == DLL_FIND_PDB) {
     std::wstring FileName =

@@ -8,6 +8,7 @@
 #include "Callstack.h"
 #include "Capture.h"
 #include "ModulesDataView.h"
+#include "OrbitBase/Logging.h"
 #include "OrbitType.h"
 #include "Params.h"
 #include "Pdb.h"
@@ -120,7 +121,7 @@ void ProcessesDataView::OnSort(int a_Column,
   }
 
   const std::vector<std::shared_ptr<Process>>& processes =
-      m_ProcessList.m_Processes;
+      m_ProcessList.GetProcesses();
   auto pdvColumn = static_cast<PdvColumn>(a_Column);
 
   if (a_NewOrder.has_value()) {
@@ -160,12 +161,14 @@ void ProcessesDataView::OnSelect(int a_Index) {
   m_SelectedProcess = GetProcess(a_Index);
   if (!m_IsRemote) {
     m_SelectedProcess->ListModules();
-  } else {
+  } else if (m_SelectedProcess->GetModules().empty()) {
     Message msg(Msg_RemoteProcessRequest);
     msg.m_Header.m_GenericHeader.m_Address = m_SelectedProcess->GetID();
     GTcpClient->Send(msg);
   }
 
+  LOG("process name: %s, address: %x", m_SelectedProcess->GetName().c_str(),
+      m_SelectedProcess.get());
   UpdateModuleDataView(m_SelectedProcess);
 }
 
@@ -187,32 +190,17 @@ void ProcessesDataView::Refresh() {
     return;
   }
 
-  if (m_RemoteProcess) {
-    std::shared_ptr<Process> CurrentRemoteProcess =
-        m_ProcessList.m_Processes.size() == 1 ? m_ProcessList.m_Processes[0]
-                                              : nullptr;
+  if (!m_IsRemote) {
+    m_ProcessList.Refresh();
+    m_ProcessList.UpdateCpuTimes();
+  }
+  UpdateProcessList();
+  OnSort(m_LastSortedColumn, {});
+  OnFilter(m_Filter);
+  SetSelectedItem();
 
-    if (m_RemoteProcess != CurrentRemoteProcess) {
-      m_ProcessList.Clear();
-      m_ProcessList.m_Processes.push_back(m_RemoteProcess);
-      UpdateProcessList();
-      SetFilter(L"");
-      SelectProcess(m_RemoteProcess->GetID());
-      SetSelectedItem();
-    }
-  } else {
-    if (!m_IsRemote) {
-      m_ProcessList.Refresh();
-      m_ProcessList.UpdateCpuTimes();
-    }
-    UpdateProcessList();
-    OnSort(m_LastSortedColumn, {});
-    OnFilter(m_Filter);
-    SetSelectedItem();
-
-    if (Capture::GTargetProcess && !Capture::IsCapturing()) {
-      Capture::GTargetProcess->UpdateThreadUsage();
-    }
+  if (Capture::GTargetProcess && !Capture::IsCapturing()) {
+    Capture::GTargetProcess->UpdateThreadUsage();
   }
 
   GParams.m_ProcessFilter = ws2s(m_Filter);
@@ -280,7 +268,7 @@ std::shared_ptr<Process> ProcessesDataView::SelectProcess(DWORD a_ProcessId) {
 void ProcessesDataView::OnFilter(const std::wstring& a_Filter) {
   std::vector<uint32_t> indices;
   const std::vector<std::shared_ptr<Process>>& processes =
-      m_ProcessList.m_Processes;
+      m_ProcessList.GetProcesses();
 
   std::vector<std::wstring> tokens = Tokenize(ToLower(a_Filter));
 
@@ -313,18 +301,16 @@ void ProcessesDataView::OnFilter(const std::wstring& a_Filter) {
 
 //-----------------------------------------------------------------------------
 void ProcessesDataView::UpdateProcessList() {
-  size_t numProcesses = m_ProcessList.m_Processes.size();
-  m_Indices.resize(numProcesses);
-  for (uint32_t i = 0; i < numProcesses; ++i) {
-    m_Indices[i] = i;
-  }
+  size_t num_processes = m_ProcessList.GetProcesses().size();
+  m_Indices.resize(num_processes);
+  std::iota(m_Indices.begin(), m_Indices.end(), 0);
 }
 
 //-----------------------------------------------------------------------------
 void ProcessesDataView::SetRemoteProcessList(
     std::shared_ptr<ProcessList> a_RemoteProcessList) {
   m_IsRemote = true;
-  m_ProcessList = *a_RemoteProcessList;
+  m_ProcessList.UpdateFromRemote(a_RemoteProcessList);
   UpdateProcessList();
   OnSort(m_LastSortedColumn, {});
   OnFilter(m_Filter);
@@ -333,18 +319,15 @@ void ProcessesDataView::SetRemoteProcessList(
 
 //-----------------------------------------------------------------------------
 void ProcessesDataView::SetRemoteProcess(std::shared_ptr<Process> a_Process) {
-  std::shared_ptr<Process> targetProcess =
-      m_ProcessList.GetProcess(a_Process->GetID());
-  if (targetProcess) {
-    m_SelectedProcess = a_Process;
-    UpdateModuleDataView(m_SelectedProcess);
-  } else {
-    m_RemoteProcess = a_Process;
-  }
+  CHECK(m_ProcessList.Contains(a_Process->GetID()));
+
+  m_ProcessList.UpdateProcess(a_Process);
+  m_SelectedProcess = a_Process;
+  UpdateModuleDataView(m_SelectedProcess);
 }
 
 //-----------------------------------------------------------------------------
 std::shared_ptr<Process> ProcessesDataView::GetProcess(
     unsigned int a_Row) const {
-  return m_ProcessList.m_Processes[m_Indices[a_Row]];
+  return m_ProcessList.GetProcessByIndex(m_Indices[a_Row]);
 }

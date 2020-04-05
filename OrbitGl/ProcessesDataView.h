@@ -54,7 +54,6 @@ class ProcessesDataView : public DataView {
   void ClearSelectedProcess();
 
   ProcessList m_ProcessList;
-  std::shared_ptr<Process> m_RemoteProcess;
   ModulesDataView* m_ModulesDataView;
   std::shared_ptr<Process> m_SelectedProcess;
   bool m_IsRemote;

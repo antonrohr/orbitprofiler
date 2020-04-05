@@ -157,7 +157,7 @@ void ConnectionManager::SetupIntrospection() {
 
 void ConnectionManager::StartCaptureAsRemote(uint32_t pid) {
   PRINT_FUNC;
-  std::shared_ptr<Process> process = process_list_.GetProcess(pid);
+  std::shared_ptr<Process> process = process_list_.GetProcessById(pid);
   if (!process) {
     PRINT("Process not found (pid=%d)\n", pid);
     return;
@@ -211,7 +211,7 @@ void ConnectionManager::SetupServerCallbacks() {
         uint32_t pid =
             static_cast<uint32_t>(msg.m_Header.m_GenericHeader.m_Address);
 
-        std::shared_ptr<Process> process = process_list_.GetProcess(pid);
+        std::shared_ptr<Process> process = process_list_.GetProcessById(pid);
         if (!process) {
           ERROR("Process not found (pid=%d)", pid);
           return;
@@ -366,7 +366,7 @@ void ConnectionManager::SendProcesses(TcpEntity* tcp_entity) {
 }
 
 void ConnectionManager::SendRemoteProcess(TcpEntity* tcp_entity, uint32_t pid) {
-  std::shared_ptr<Process> process = process_list_.GetProcess(pid);
+  std::shared_ptr<Process> process = process_list_.GetProcessById(pid);
   // TODO: remove this - pid should be part of every message,
   // and all the messages should to be as stateless as possible.
   Capture::SetTargetProcess(process);

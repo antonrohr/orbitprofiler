@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "Log.h"
+#include "OrbitBase/Logging.h"
 
 #ifdef _WIN32
 #include <tlhelp32.h>
@@ -101,7 +102,7 @@ void ProcessList::Clear() {
 void ProcessList::Refresh() {
 #ifdef _WIN32
   m_Processes.clear();
-  std::unordered_map<uint32_t, std::shared_ptr<Process> > previousProcessesMap =
+  std::unordered_map<uint32_t, std::shared_ptr<Process>> previousProcessesMap =
       m_ProcessesMap;
   m_ProcessesMap.clear();
 
@@ -267,11 +268,51 @@ void ProcessList::SetRemote(bool value) {
 }
 
 //-----------------------------------------------------------------------------
-std::shared_ptr<Process> ProcessList::GetProcess(uint32_t pid) const {
+std::shared_ptr<Process> ProcessList::GetProcessById(uint32_t pid) const {
   std::shared_ptr<Process> result = nullptr;
   auto iter = m_ProcessesMap.find(pid);
   if (iter != m_ProcessesMap.end()) result = iter->second;
   return result;
+}
+
+//-----------------------------------------------------------------------------
+std::shared_ptr<Process> ProcessList::GetProcessByIndex(size_t index) const {
+  return m_Processes[index];
+}
+
+//-----------------------------------------------------------------------------
+void ProcessList::UpdateFromRemote(
+    const std::shared_ptr<ProcessList>& remote_list) {
+  std::vector<std::shared_ptr<Process>> updated_processes;
+  std::unordered_map<uint32_t, std::shared_ptr<Process>> updated_process_map;
+
+  for (const auto& remote_process : remote_list->m_Processes) {
+    std::shared_ptr<Process> process;
+    auto iter = m_ProcessesMap.find(remote_process->GetID());
+    if (iter == m_ProcessesMap.end()) {
+      process = remote_process;
+    } else {
+      process = iter->second;
+      process->SetCpuUsage(remote_process->GetCpuUsage());
+    }
+    updated_processes.push_back(process);
+    updated_process_map[process->GetID()] = process;
+  }
+  m_Processes = updated_processes;
+  m_ProcessesMap = updated_process_map;
+}
+
+void ProcessList::UpdateProcess(const std::shared_ptr<Process>& newer_version) {
+  bool updated = false;
+  for (auto& process : m_Processes) {
+    if (process->GetID() == newer_version->GetID()) {
+      process = newer_version;
+      updated = true;
+      break;
+    }
+  }
+  CHECK(updated);
+  m_ProcessesMap[newer_version->GetID()] = newer_version;
 }
 
 //-----------------------------------------------------------------------------
