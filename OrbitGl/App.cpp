@@ -90,6 +90,9 @@ OrbitApp::~OrbitApp() {
 #ifdef _WIN32
   oqpi_tk::stop_scheduler();
 #endif
+
+  Capture::StopCapture();
+  Capture::GIsSampling = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -329,9 +332,10 @@ void OrbitApp::PostInit() {
       SystraceManager::Get().Dump();
     }
   }
-
-  int my_argc = 0;
-  glutInit(&my_argc, NULL);
+  if (glutGet(GLUT_INIT_STATE) != 1) {
+    int my_argc = 0;
+    glutInit(&my_argc, NULL);
+  }
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   GetDesktopResolution(GOrbitApp->m_ScreenRes[0], GOrbitApp->m_ScreenRes[1]);
 
@@ -483,7 +487,6 @@ void OrbitApp::OnExit() {
   }
 
   GParams.Save();
-  GTimerManager = nullptr;
 
   ConnectionManager::Get().Stop();
   GTcpClient->Stop();
@@ -496,6 +499,14 @@ void OrbitApp::OnExit() {
 
   GCoreApp = nullptr;
   GOrbitApp = nullptr;
+  GTcpServer = nullptr;
+  GTcpClient = nullptr;
+  GTimerManager = nullptr;
+
+  if (GCurrentTimeGraph) {
+    GCurrentTimeGraph->Clear();
+  }
+
   Orbit_ImGui_Shutdown();
 }
 
