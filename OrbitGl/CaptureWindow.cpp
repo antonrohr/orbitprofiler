@@ -9,6 +9,7 @@
 #include "Capture.h"
 #include "EventTracer.h"
 #include "GlUtils.h"
+#include "OrbitBase/Logging.h"
 #include "PluginManager.h"
 #include "Serialization.h"
 #include "Systrace.h"
@@ -36,6 +37,7 @@ ABSL_DECLARE_FLAG(bool, enable_stale_features);
 //-----------------------------------------------------------------------------
 CaptureWindow::CaptureWindow() {
   GCurrentTimeGraph = &time_graph_;
+  LOGRED("GCurrentTimeGraph address %p", GCurrentTimeGraph);
   time_graph_.SetTextRenderer(&m_TextRenderer);
   time_graph_.SetPickingManager(&m_PickingManager);
   time_graph_.SetCanvas(this);

@@ -133,7 +133,8 @@ void Capture::SetTargetProcess(const std::shared_ptr<Process>& a_Process) {
     GInjectedProcess = "";
 
     GTargetProcess = a_Process;
-    GSamplingProfiler = std::make_shared<SamplingProfiler>(a_Process);
+    GSamplingProfiler = std::make_shared<SamplingProfiler>(
+        a_Process);  // TODO(antonrohr) make unique?
     GSelectedFunctionsMap.clear();
     GFunctionCountMap.clear();
     GOrbitUnreal.Clear();
@@ -225,7 +226,10 @@ void Capture::StopCapture() {
   }
 
   TcpEntity* tcpEntity = Capture::GetMainTcpEntity();
-  tcpEntity->Send(Msg_StopCapture);
+  if (tcpEntity) {  // TODO(antonrohr) think about this: does it mean it might
+                    // continue on the service?
+    tcpEntity->Send(Msg_StopCapture);
+  }
   if (GTimerManager) {
     GTimerManager->StopRecording();
   }

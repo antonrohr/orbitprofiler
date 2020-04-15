@@ -82,7 +82,8 @@ class Capture {
   static ULONG64 GNumLinuxEvents;
   static ULONG64 GNumProfileEvents;
   static std::shared_ptr<SamplingProfiler> GSamplingProfiler;
-  static std::shared_ptr<Process> GTargetProcess;
+  static std::shared_ptr<Process>
+      GTargetProcess;  // TODO(antonrohr) maybe unset
   static std::shared_ptr<Session> GSessionPresets;
   static std::shared_ptr<CallStack> GSelectedCallstack;
   static void (*GClearCaptureDataFunc)();

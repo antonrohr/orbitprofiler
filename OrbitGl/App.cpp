@@ -253,8 +253,13 @@ bool OrbitApp::Init(ApplicationOptions&& options) {
   GOrbitApp = std::make_unique<OrbitApp>(std::move(options));
   GCoreApp = GOrbitApp.get();
 
+  LOG("GTimerManager unique_ptr address %p", GTimerManager.get());
   GTimerManager = std::make_unique<TimerManager>();
+  LOG("GTimerManager unique_ptr address %p", GTimerManager.get());
+
+  LOG("GTcpServer unique_ptr address %p", GTcpServer.get());
   GTcpServer = std::make_unique<TcpServer>();
+  LOG("GTcpServer unique_ptr address %p", GTcpServer.get());
 
   Path::Init();
 
@@ -496,6 +501,8 @@ void OrbitApp::OnExit() {
   }
 
   process_list_manager_->Shutdown();
+  LOG("GTcpClient unique_ptr address %p", GTcpClient.get());
+  LOG("GTcpServer unique_ptr address %p", GTcpServer.get());
 
   GCoreApp = nullptr;
   GOrbitApp = nullptr;

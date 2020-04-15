@@ -84,6 +84,7 @@ void TimeGraph::Clear() {
   m_SessionMinCounter = std::numeric_limits<uint64_t>::max();
   m_SessionMaxCounter = 0;
   m_ThreadCountMap.clear();
+  LOGRED("cleared mThreadCountMap");
   GEventTracer.GetEventBuffer().Reset();
   m_MemTracker.Clear();
 
@@ -654,6 +655,7 @@ void TimeGraph::SortTracks() {
       std::map<uint64_t, CallstackEvent>& callstacks = pair.second;
       m_EventCount[threadID] = callstacks.size();
       GetOrCreateThreadTrack(threadID);
+      LOGRED("Thread %d existing", threadID);
     }
   }
 
