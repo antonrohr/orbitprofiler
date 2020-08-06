@@ -109,7 +109,7 @@
         </attribute>
         <layout class="QGridLayout" name="gridLayout_2">
          <item row="0" column="0">
-          <widget class="OrbitDataViewPanel" name="FunctionsList"/>
+          <widget class="Widgets::FilterBarTableViewWidget" name="FunctionsList"/>
          </item>
         </layout>
        </widget>
@@ -430,6 +430,9 @@
    <class>OrbitSamplingReport</class>
    <extends>QWidget</extends>
    <header>orbitsamplingreport.h</header>
+   <class>Widgets::FilterBarTableViewWidget</class>
+   <extends>QWidget</extends>
+   <header>Widgets/FilterBarTableViewWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

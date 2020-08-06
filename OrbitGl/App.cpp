@@ -794,6 +794,10 @@ void OrbitApp::LoadModules(int32_t process_id, const std::vector<std::shared_ptr
     }
 
     if (symbols) {
+      {
+        SCOPE_TIMER_LOG("symbol callback timing");
+        symbols_arrived_callback_(symbols.value());
+      }
       module->LoadSymbols(symbols.value());
       if (Capture::GTargetProcess != nullptr) {
         Capture::GTargetProcess->AddFunctions(module->m_Pdb->GetFunctions());

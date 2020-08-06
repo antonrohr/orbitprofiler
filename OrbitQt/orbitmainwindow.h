@@ -20,6 +20,7 @@
 
 #include "ApplicationOptions.h"
 #include "CallStackDataView.h"
+#include "ItemModels/FunctionItemModel.h"
 #include "StatusListener.h"
 #include "TopDownView.h"
 #include "servicedeploymanager.h"
@@ -101,6 +102,9 @@ class OrbitMainWindow : public QMainWindow {
 
   // Status listener
   std::unique_ptr<StatusListener> status_listener_;
+
+  ItemModels::FunctionItemModel function_item_model_;
+  void SetUpFunctionsView();
 };
 
 #endif  // ORBIT_QT_ORBIT_MAIN_WINDOW_H_

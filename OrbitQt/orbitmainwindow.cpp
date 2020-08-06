@@ -4,6 +4,9 @@
 
 #include "orbitmainwindow.h"
 
+#include <qnamespace.h>
+#include <qregexp.h>
+
 #include <QBuffer>
 #include <QCheckBox>
 #include <QClipboard>
@@ -155,8 +158,8 @@ OrbitMainWindow::OrbitMainWindow(QApplication* a_App, ApplicationOptions&& optio
 
   ui->ModulesList->Initialize(data_view_factory->GetOrCreateDataView(DataViewType::kModules),
                               SelectionType::kExtended, FontType::kDefault);
-  ui->FunctionsList->Initialize(data_view_factory->GetOrCreateDataView(DataViewType::kFunctions),
-                                SelectionType::kExtended, FontType::kDefault);
+  // ui->FunctionsList->Initialize(data_view_factory->GetOrCreateDataView(DataViewType::kFunctions),
+  //                               SelectionType::kExtended, FontType::kDefault);
   ui->CallStackView->Initialize(data_view_factory->GetOrCreateDataView(DataViewType::kCallstack),
                                 SelectionType::kExtended, FontType::kDefault);
   ui->SessionList->Initialize(data_view_factory->GetOrCreateDataView(DataViewType::kPresets),
@@ -179,14 +182,65 @@ OrbitMainWindow::OrbitMainWindow(QApplication* a_App, ApplicationOptions&& optio
 
   ui->liveFunctions->Initialize(SelectionType::kExtended, FontType::kDefault);
 
-  connect(ui->liveFunctions->GetFilterLineEdit(), &QLineEdit::textChanged, this,
-          [this](const QString& text) { OnLiveTabFunctionsFilterTextChanged(text); });
+  // connect(ui->liveFunctions->GetFilterLineEdit(), &QLineEdit::textChanged, this,
+  //         [this](const QString& text) { OnLiveTabFunctionsFilterTextChanged(text); });
 
   SetTitle({});
   std::string iconFileName = Path::GetExecutablePath() + "orbit.ico";
   this->setWindowIcon(QIcon(iconFileName.c_str()));
 
   GOrbitApp->PostInit();
+
+  SetUpFunctionsView();
+}
+
+void OrbitMainWindow::SetUpFunctionsView() {
+  using FunctionsColumn = ItemModels::FunctionItemModel::Column;
+  ui->FunctionsList->GetLabel()->setText("Functions");
+  ui->FunctionsList->SetModel(&function_item_model_);
+
+  auto model = ui->FunctionsList->GetProxyModel();
+  // TODO(antonrohr) filtering of more than name should maybe be possible. This
+  // probably means QSortFilterProxyModel needs to be subclassed
+  model->setFilterKeyColumn(static_cast<int>(FunctionsColumn::kFunctionName));
+  // model->setFilterRegExp(
+  //     QRegExp("", Qt::CaseInsensitive, QRegExp::FixedString));
+  // model->setFilterCaseSensitivity(Qt::CaseInsensitive);
+  // model->set
+  model->setSortRole(Qt::EditRole);
+
+  auto table = ui->FunctionsList->GetTableView();
+  table->setSelectionMode(QAbstractItemView::SelectionMode::MultiSelection);
+  table->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
+  table->setSortingEnabled(true);
+  table->sortByColumn(static_cast<int>(FunctionsColumn::kSize), Qt::DescendingOrder);
+  table->setWordWrap(false);
+
+  auto header = table->horizontalHeader();
+
+  header->setSectionResizeMode(static_cast<int>(FunctionsColumn::kHooked),
+                               QHeaderView::ResizeToContents);
+  header->setSectionResizeMode(static_cast<int>(FunctionsColumn::kFunctionName),
+                               QHeaderView::Stretch);
+  header->setSectionResizeMode(static_cast<int>(FunctionsColumn::kSize),
+                               QHeaderView::ResizeToContents);
+  header->setSectionResizeMode(static_cast<int>(FunctionsColumn::kSourceFile),
+                               QHeaderView::ResizeToContents);
+  header->setSectionResizeMode(static_cast<int>(FunctionsColumn::kSourceLine),
+                               QHeaderView::ResizeToContents);
+  header->setSectionResizeMode(static_cast<int>(FunctionsColumn::kModuleName),
+                               QHeaderView::ResizeToContents);
+  header->setSectionResizeMode(static_cast<int>(FunctionsColumn::kAddress),
+                               QHeaderView::ResizeToContents);
+
+  auto rows = table->verticalHeader();
+  rows->setDefaultSectionSize(table->fontMetrics().height() + 2);
+
+  GOrbitApp->symbols_arrived_callback_ = [this](orbit_grpc_protos::ModuleSymbols module_symbols) {
+    std::vector<orbit_grpc_protos::SymbolInfo> symbols = {module_symbols.symbol_infos().begin(),
+                                                          module_symbols.symbol_infos().end()};
+    function_item_model_.AddFunctions(std::move(symbols));
+  };
 }
 
 static void SetFontSize(QWidget* widget, uint32_t font_size) {
@@ -306,7 +360,7 @@ void OrbitMainWindow::UpdatePanel(DataViewType a_Type) {
       ui->CallStackView->Refresh();
       break;
     case DataViewType::kFunctions:
-      ui->FunctionsList->Refresh();
+      // ui->FunctionsList->Refresh();
       break;
     case DataViewType::kLiveFunctions:
       ui->liveFunctions->Refresh();

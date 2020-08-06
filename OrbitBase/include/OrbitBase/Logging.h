@@ -32,6 +32,18 @@
     PLATFORM_LOG(formatted_log__.c_str());                                              \
   } while (0)
 
+#define LOGRED(format, ...)                                            \
+  do {                                                                 \
+    std::string file_and_line__ = absl::StrFormat(                     \
+        "%s:%d", std::filesystem::path(__FILE__).filename().c_str(),   \
+        __LINE__);                                                     \
+    if (file_and_line__.size() > 28)                                   \
+      file_and_line__ =                                                \
+          "..." + file_and_line__.substr(file_and_line__.size() - 25); \
+    fprintf(stderr, "[%28s] \e[31m" format "\e[39m\n",                 \
+            file_and_line__.c_str(), ##__VA_ARGS__);                   \
+  } while (0)
+
 #if defined(_WIN32) && defined(ERROR)
 #undef ERROR
 #endif

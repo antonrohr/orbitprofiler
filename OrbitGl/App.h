@@ -225,6 +225,8 @@ class OrbitApp final : public DataViewFactory, public CaptureListener {
   [[nodiscard]] const TextBox* selected_text_box() const;
   void SelectTextBox(const TextBox* text_box);
 
+  std::function<void(orbit_grpc_protos::ModuleSymbols)> symbols_arrived_callback_;
+
  private:
   void LoadModuleOnRemote(int32_t process_id, const std::shared_ptr<Module>& module,
                           const std::shared_ptr<orbit_client_protos::PresetFile>& preset);

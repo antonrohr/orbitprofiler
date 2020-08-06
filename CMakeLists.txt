@@ -149,11 +149,13 @@ add_subdirectory(OrbitTest)
 add_subdirectory(OrbitVersion)
 
 if(WITH_GUI)
+  add_subdirectory(ItemModels)
   add_subdirectory(OrbitGgp)
   add_subdirectory(OrbitSsh)
   add_subdirectory(OrbitSshQt)
   add_subdirectory(OrbitGl)
   add_subdirectory(OrbitQt)
+  add_subdirectory(Widgets)
 endif()
 
 if(WIN32)
