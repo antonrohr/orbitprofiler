@@ -115,10 +115,7 @@ ErrorMessageOr<ModuleSymbols> ElfFileImpl<ElfT>::LoadSymbols() {
   }
   bool symbols_added = false;
 
-  OUTCOME_TRY(load_bias, GetLoadBias());
-
   ModuleSymbols module_symbols;
-  module_symbols.set_load_bias(load_bias);
   module_symbols.set_symbols_file_path(file_path_);
 
   for (const llvm::object::ELFSymbolRef& symbol_ref : object_file_->symbols()) {

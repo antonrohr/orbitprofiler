@@ -24,7 +24,9 @@ TEST(FramePointerValidator, GetFpoFunctions) {
 
   const auto symbols_result = elf_file.value()->LoadSymbols();
   ASSERT_TRUE(symbols_result) << symbols_result.error().message();
-  uint64_t load_bias = symbols_result.value().load_bias();
+  auto load_bias_result = elf_file.value()->GetLoadBias();
+  ASSERT_TRUE(load_bias_result);
+  uint64_t load_bias = load_bias_result.value();
   const std::vector<SymbolInfo> symbol_infos(symbols_result.value().symbol_infos().begin(),
                                              symbols_result.value().symbol_infos().end());
 
