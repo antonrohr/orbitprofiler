@@ -116,7 +116,6 @@ ErrorMessageOr<ModuleSymbols> ElfFileImpl<ElfT>::LoadSymbols() {
   bool symbols_added = false;
 
   ModuleSymbols module_symbols;
-  module_symbols.set_symbols_file_path(file_path_);
 
   for (const llvm::object::ELFSymbolRef& symbol_ref : object_file_->symbols()) {
     if ((symbol_ref.getFlags() & llvm::object::BasicSymbolRef::SF_Undefined) != 0) {

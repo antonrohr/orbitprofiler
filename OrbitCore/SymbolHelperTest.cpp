@@ -99,7 +99,6 @@ TEST(SymbolHelper, LoadFromFile) {
     ASSERT_TRUE(result) << result.error().message();
     const ModuleSymbols& symbols = result.value();
 
-    EXPECT_EQ(symbols.symbols_file_path(), file_path);
     EXPECT_FALSE(symbols.symbol_infos().empty());
   }
 
