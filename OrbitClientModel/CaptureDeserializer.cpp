@@ -125,7 +125,6 @@ void LoadCaptureInfo(const CaptureInfo& capture_info, CaptureListener* capture_l
   absl::flat_hash_map<std::string, orbit_grpc_protos::ModuleInfo> module_map;
   for (const auto& module : capture_info.modules()) {
     orbit_grpc_protos::ModuleInfo module_info;
-    module_info.set_name(module.name());
     module_info.set_file_path(module.file_path());
     module_info.set_file_size(module.file_size());
     module_info.set_address_start(module.address_start());

@@ -70,7 +70,7 @@ TEST(ServiceUtils, ParseMaps) {
 
     const ModuleInfo* hello_module_info;
     const ModuleInfo* no_symbols_module_info;
-    if (result.value()[0].name() == "hello_world_elf") {
+    if (result.value()[0].file_path() == hello_world_path) {
       hello_module_info = &result.value()[0];
       no_symbols_module_info = &result.value()[1];
     } else {
@@ -78,7 +78,6 @@ TEST(ServiceUtils, ParseMaps) {
       no_symbols_module_info = &result.value()[0];
     }
 
-    EXPECT_EQ(hello_module_info->name(), "hello_world_elf");
     EXPECT_EQ(hello_module_info->file_path(), hello_world_path);
     EXPECT_EQ(hello_module_info->file_size(), 16616);
     EXPECT_EQ(hello_module_info->address_start(), 0x7f6874285000);
@@ -86,7 +85,6 @@ TEST(ServiceUtils, ParseMaps) {
     EXPECT_EQ(hello_module_info->build_id(), "d12d54bc5b72ccce54a408bdeda65e2530740ac8");
     EXPECT_EQ(hello_module_info->load_bias(), 0x0);
 
-    EXPECT_EQ(no_symbols_module_info->name(), "no_symbols_elf");
     EXPECT_EQ(no_symbols_module_info->file_path(), no_symbols_path);
     EXPECT_EQ(no_symbols_module_info->file_size(), 18768);
     EXPECT_EQ(no_symbols_module_info->address_start(), 0x0);

@@ -24,7 +24,7 @@ message ProcessInfo {
 }
 
 message ModuleInfo {
-  string name = 1;
+  reserved 1;
   string file_path = 2;
   uint64 file_size = 3;
   uint64 address_start = 4;
@@ -44,10 +44,7 @@ message FunctionInfo {
   uint32 line = 9;
 
   enum OrbitType {
-    kNone = 0;
-    kOrbitTimerStart = 1;
-    kOrbitTimerStop = 2;
-    kOrbitTimerStartAsync = 3;
+    kNone = 0; kOrbitTimerStart = 1; kOrbitTimerStop = 2; kOrbitTimerStartAsync = 3;
     kOrbitTimerStopAsync = 4;
     kOrbitTrackValue = 5;
   }
@@ -60,19 +57,13 @@ message CallstackEvent {
   int32 thread_id = 3;
 }
 
-message CallstackInfo {
-  repeated uint64 data = 1;
-}
+message CallstackInfo { repeated uint64 data = 1; }
 
 message ThreadStateSliceInfo {
   // pid is absent as we don't yet get that information from the service.
   int32 tid = 1;
   enum ThreadState {
-    kRunning = 0;
-    kRunnable = 1;
-    kInterruptibleSleep = 2;
-    kUninterruptibleSleep = 3;
-    kStopped = 4;
+    kRunning = 0; kRunnable = 1; kInterruptibleSleep = 2; kUninterruptibleSleep = 3; kStopped = 4;
     kTraced = 5;
     kDead = 6;
     kZombie = 7;
@@ -105,9 +96,7 @@ message LinuxAddressInfo {
   uint64 offset_in_function = 4;
 }
 
-message CaptureHeader {
-  string version = 1;
-}
+message CaptureHeader { string version = 1; }
 
 message CaptureInfo {
   reserved 2, 3;
@@ -133,13 +122,7 @@ message TimerInfo {
   int32 thread_id = 4;
   uint32 depth = 5;
 
-  enum Type {
-    kNone = 0;
-    kCoreActivity = 1;
-    kIntrospection = 2;
-    kGpuActivity = 3;
-    kFrame = 4;
-  }
+  enum Type { kNone = 0; kCoreActivity = 1; kIntrospection = 2; kGpuActivity = 3; kFrame = 4; }
   Type type = 6;
 
   int32 processor = 7;

@@ -145,9 +145,8 @@ ErrorMessageOr<void> ClientGgp::LoadModuleAndSymbols() {
 
   LOG("List of modules");
   for (const ModuleInfo& info : module_infos) {
-    LOG("name:%s, path:%s, size:%d, address_start:%d. address_end:%d, build_id:%s", info.name(),
-        info.file_path(), info.file_size(), info.address_start(), info.address_end(),
-        info.build_id());
+    LOG("path:%s, size:%d, address_start:%d. address_end:%d, build_id:%s", info.file_path(),
+        info.file_size(), info.address_start(), info.address_end(), info.build_id());
   }
 
   module_manager_.AddNewModules(module_infos);

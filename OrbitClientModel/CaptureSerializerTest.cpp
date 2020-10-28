@@ -181,7 +181,6 @@ TEST(CaptureSerializer, GenerateCaptureInfo) {
 
   ASSERT_EQ(1, capture_info.modules_size());
   const orbit_client_protos::ModuleInfo& actual_module = capture_info.modules(0);
-  EXPECT_EQ(module_info.name(), actual_module.name());
   EXPECT_EQ(module_info.file_path(), actual_module.file_path());
   EXPECT_EQ(module_info.load_bias(), actual_module.load_bias());
   EXPECT_EQ(module_info.address_start(), actual_module.address_start());

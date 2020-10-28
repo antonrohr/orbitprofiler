@@ -17,14 +17,13 @@ using orbit_grpc_protos::ModuleSymbols;
 using orbit_grpc_protos::SymbolInfo;
 
 TEST(ModuleData, Constructor) {
-  std::string name = "Example Name";
-  std::string file_path = "/test/file/path";
+  std::string name = "module";
+  std::string file_path = "/test/file/path/to/module";
   uint64_t file_size = 1000;
   std::string build_id = "test build id";
   uint64_t load_bias = 4000;
 
   ModuleInfo module_info{};
-  module_info.set_name(name);
   module_info.set_file_path(file_path);
   module_info.set_file_size(file_size);
   module_info.set_build_id(build_id);

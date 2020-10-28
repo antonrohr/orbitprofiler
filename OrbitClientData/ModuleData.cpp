@@ -11,6 +11,8 @@
 
 using orbit_client_protos::FunctionInfo;
 
+const std::string ModuleData::name() const { return std::filesystem::path{file_path()}.filename(); }
+
 bool ModuleData::is_loaded() const {
   absl::MutexLock lock(&mutex_);
   return is_loaded_;

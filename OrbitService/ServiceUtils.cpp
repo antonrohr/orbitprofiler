@@ -114,7 +114,6 @@ ErrorMessageOr<std::vector<ModuleInfo>> ParseMaps(std::string_view proc_maps_dat
     }
 
     ModuleInfo module_info;
-    module_info.set_name(std::filesystem::path{module_path}.filename());
     module_info.set_file_path(module_path);
     module_info.set_file_size(file_size.value());
     module_info.set_address_start(address_range.start_address);

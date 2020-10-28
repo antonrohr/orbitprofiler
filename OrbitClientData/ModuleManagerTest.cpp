@@ -19,14 +19,13 @@ using orbit_grpc_protos::ProcessInfo;
 using orbit_grpc_protos::SymbolInfo;
 
 TEST(ModuleManager, GetModuleByPath) {
-  std::string name = "name of module";
+  std::string name = "module";
   std::string file_path = "path/of/module";
   uint64_t file_size = 300;
   std::string build_id = "build id example";
   uint64_t load_bias = 0x400;
 
   ModuleInfo module_info;
-  module_info.set_name(name);
   module_info.set_file_path(file_path);
   module_info.set_file_size(file_size);
   module_info.set_build_id(build_id);
@@ -48,14 +47,13 @@ TEST(ModuleManager, GetModuleByPath) {
 }
 
 TEST(ModuleManager, GetMutableModuleByPath) {
-  std::string name = "name of module";
+  std::string name = "module";
   std::string file_path = "path/of/module";
   uint64_t file_size = 300;
   std::string build_id = "build id example";
   uint64_t load_bias = 0x400;
 
   ModuleInfo module_info;
-  module_info.set_name(name);
   module_info.set_file_path(file_path);
   module_info.set_file_size(file_size);
   module_info.set_build_id(build_id);
@@ -81,14 +79,13 @@ TEST(ModuleManager, GetMutableModuleByPath) {
 }
 
 TEST(ModuleManager, AddNewModules) {
-  std::string name = "name of module";
+  std::string name = "module";
   std::string file_path = "path/of/module";
   uint64_t file_size = 300;
   std::string build_id = "build id example";
   uint64_t load_bias = 0x400;
 
   ModuleInfo module_info;
-  module_info.set_name(name);
   module_info.set_file_path(file_path);
   module_info.set_file_size(file_size);
   module_info.set_build_id(build_id);
@@ -102,15 +99,16 @@ TEST(ModuleManager, AddNewModules) {
     EXPECT_EQ(module->name(), name);
   }
 
-  // change name and add again (should not be added again, since module is identified by file path)
-  std::string different_name = "different name";
-  module_info.set_name(different_name);
+  // change build_id and add again (should not be added again, since module is identified by file
+  // path)
+  std::string different_build_id = "different build id";
+  module_info.set_build_id(different_build_id);
   module_manager.AddNewModules({module_info});
   {
     const ModuleData* module = module_manager.GetModuleByPath(file_path);
     ASSERT_NE(module, nullptr);
-    EXPECT_EQ(module->name(), name);
-    EXPECT_NE(module->name(), different_name);
+    EXPECT_EQ(module->build_id(), build_id);
+    EXPECT_NE(module->build_id(), different_build_id);
   }
 
   // change file path and add again (should be added again, because it is now considered a different
@@ -122,22 +120,22 @@ TEST(ModuleManager, AddNewModules) {
     // original module
     const ModuleData* module = module_manager.GetModuleByPath(file_path);
     ASSERT_NE(module, nullptr);
-    EXPECT_EQ(module->name(), name);
-    EXPECT_NE(module->name(), different_name);
+    EXPECT_EQ(module->build_id(), build_id);
+    EXPECT_NE(module->build_id(), different_build_id);
   }
   {
     // second module
     const ModuleData* module = module_manager.GetModuleByPath(different_path);
     ASSERT_NE(module, nullptr);
-    EXPECT_EQ(module->name(), different_name);
-    EXPECT_NE(module->name(), name);
+    EXPECT_EQ(module->build_id(), different_build_id);
+    EXPECT_NE(module->build_id(), build_id);
     EXPECT_EQ(module->file_path(), different_path);
     EXPECT_NE(module->file_path(), file_path);
   }
 }
 
 TEST(ModuleManager, GetOrbitFunctionsOfProcess) {
-  std::string name = "name of module";
+  std::string name = "module";
   std::string file_path = "path/of/module";
   uint64_t file_size = 300;
   std::string build_id = "build id example";
@@ -146,7 +144,6 @@ TEST(ModuleManager, GetOrbitFunctionsOfProcess) {
   uint64_t address_end = 1000;
 
   ModuleInfo module_info;
-  module_info.set_name(name);
   module_info.set_file_path(file_path);
   module_info.set_file_size(file_size);
   module_info.set_build_id(build_id);

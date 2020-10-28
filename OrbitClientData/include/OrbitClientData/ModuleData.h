@@ -24,7 +24,7 @@ class ModuleData final {
   explicit ModuleData(orbit_grpc_protos::ModuleInfo info)
       : module_info_(std::move(info)), is_loaded_(false) {}
 
-  [[nodiscard]] const std::string& name() const { return module_info_.name(); }
+  [[nodiscard]] const std::string name() const;
   [[nodiscard]] const std::string& file_path() const { return module_info_.file_path(); }
   [[nodiscard]] uint64_t file_size() const { return module_info_.file_size(); }
   [[nodiscard]] const std::string& build_id() const { return module_info_.build_id(); }

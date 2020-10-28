@@ -71,7 +71,6 @@ CaptureInfo GenerateCaptureInfo(
     const ModuleData* module = capture_data.GetModuleByPath(module_path);
     CHECK(module != nullptr);
     ModuleInfo* module_info = capture_info.add_modules();
-    module_info->set_name(module->name());
     module_info->set_file_path(module->file_path());
     module_info->set_file_size(module->file_size());
     module_info->set_address_start(memory_space.start);

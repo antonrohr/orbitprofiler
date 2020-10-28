@@ -167,7 +167,6 @@ TEST(CaptureDeserializer, LoadCaptureInfoOnCaptureStarted) {
   process_info->set_name("process");
 
   orbit_client_protos::ModuleInfo* module_info = capture_info.add_modules();
-  module_info->set_name("module");
   module_info->set_file_path("path/to/module");
   module_info->set_address_start(10);
   module_info->set_address_end(123);
@@ -228,7 +227,6 @@ TEST(CaptureDeserializer, LoadCaptureInfoModuleManager) {
 
   std::string module_path = "path/to/module";
   orbit_client_protos::ModuleInfo* module_info = capture_info.add_modules();
-  module_info->set_name("module");
   module_info->set_file_path(module_path);
   module_info->set_file_size(300);
   module_info->set_build_id("test build id");
@@ -253,7 +251,7 @@ TEST(CaptureDeserializer, LoadCaptureInfoModuleManager) {
 
   const ModuleData* module = module_manager.GetModuleByPath(module_path);
   ASSERT_NE(module, nullptr);
-  EXPECT_EQ(module->name(), module_info->name());
+  EXPECT_EQ(module->name(), "module");
   EXPECT_EQ(module->file_path(), module_info->file_path());
   EXPECT_EQ(module->file_size(), module_info->file_size());
   EXPECT_EQ(module->build_id(), module_info->build_id());
