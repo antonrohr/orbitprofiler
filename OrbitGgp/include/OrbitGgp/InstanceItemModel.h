@@ -30,7 +30,7 @@ class InstanceItemModel : public QAbstractItemModel {
   QModelIndex parent(const QModelIndex& parent) const override;
   int rowCount(const QModelIndex& parent = {}) const override;
 
-  int GetRowOfInstanceById(const QString& instance_id);
+  std::optional<int> GetRowOfInstanceById(const QString& instance_id);
 
  private:
   QVector<Instance> instances_;

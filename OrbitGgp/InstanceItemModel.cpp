@@ -142,12 +142,12 @@ void InstanceItemModel::SetInstances(QVector<Instance> new_instances) {
   }
 }
 
-int InstanceItemModel::GetRowOfInstanceById(const QString& instance_id) {
+std::optional<int> InstanceItemModel::GetRowOfInstanceById(const QString& instance_id) {
   const auto it =
       std::find_if(instances_.begin(), instances_.end(),
                    [&instance_id](const Instance& instance) { return instance.id == instance_id; });
 
-  if (it == instances_.end()) return -1;
+  if (it == instances_.end()) return std::nullopt;
 
   return std::distance(instances_.begin(), it);
 }

@@ -222,10 +222,15 @@ void ConnectToStadiaWidget::ReloadInstances() {
       std::string instance_id = instance.id.toStdString();
 
       if (remembered_instance_id_ != std::nullopt) {
-        int row = instance_model_.GetRowOfInstanceById(remembered_instance_id_.value());
-        ui_->instancesTableView->selectRow(row);
-        emit Connect();
-        remembered_instance_id_ = std::nullopt;
+        std::optional<int> row =
+            instance_model_.GetRowOfInstanceById(remembered_instance_id_.value());
+        if (row != std::nullopt) {
+          ui_->instancesTableView->selectRow(row.value());
+          emit Connect();
+          remembered_instance_id_ = std::nullopt;
+        } else {
+          ui_->rememberCheckBox->setChecked(false);
+        }
       }
 
       if (instance_credentials_.contains(instance_id) &&
