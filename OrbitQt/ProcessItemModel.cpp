@@ -8,7 +8,7 @@
 #include "google/protobuf/util/message_differencer.h"
 #include "process.pb.h"
 
-namespace OrbitQt {
+namespace orbit_qt {
 
 using orbit_grpc_protos::ProcessInfo;
 
@@ -160,4 +160,4 @@ void ProcessItemModel::SetProcesses(std::vector<ProcessInfo> new_processes) {
   }
 }
 
-}  // namespace OrbitQt
+}  // namespace orbit_qt

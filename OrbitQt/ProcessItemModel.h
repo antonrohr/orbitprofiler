@@ -10,7 +10,7 @@
 
 #include "process.pb.h"
 
-namespace OrbitQt {
+namespace orbit_qt {
 
 class ProcessItemModel : public QAbstractItemModel {
   Q_OBJECT
@@ -33,7 +33,7 @@ class ProcessItemModel : public QAbstractItemModel {
   std::vector<orbit_grpc_protos::ProcessInfo> processes_;
 };
 
-}  // namespace OrbitQt
+}  // namespace orbit_qt
 
 Q_DECLARE_METATYPE(const orbit_grpc_protos::ProcessInfo*);
 

@@ -49,7 +49,7 @@ class AssertNoQtLogWarnings {
 
 }  // namespace
 
-namespace OrbitQt {
+namespace orbit_qt {
 
 TEST(ProcessItemModel, ProcessItemModel) {
   // This installs a QtMessageHandler for this scope. Any warning, critical or fatal message
@@ -88,4 +88,4 @@ TEST(ProcessItemModel, ProcessItemModel) {
   EXPECT_EQ(model.rowCount(), 0);
 }
 
-}  // namespace OrbitQt
+}  // namespace orbit_qt
