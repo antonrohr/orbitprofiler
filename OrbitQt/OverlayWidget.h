@@ -30,7 +30,7 @@ class OverlayWidget : public QWidget {
   void paintEvent(QPaintEvent* /*event*/) override;
   bool eventFilter(QObject* obj, QEvent* event) override;
 
- private slots:
+ public slots:
   void SetSpinning(bool value) { ui_->progressBar->setVisible(value); }
   void SetCancelable(bool value) { ui_->cancelButton->setVisible(value); }
   void SetStatusMessage(const QString& message) { ui_->messageLabel->setText(message); }

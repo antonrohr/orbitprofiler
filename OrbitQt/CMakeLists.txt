@@ -46,6 +46,8 @@ target_sources(
   PRIVATE CallTreeViewItemModel.cpp
           CallTreeWidget.cpp
           CallTreeWidget.ui
+          ConnectToStadiaWidget.cpp
+          ConnectToStadiaWidget.ui
           Error.cpp
           ElidedLabel.cpp
           MainThreadExecutorImpl.cpp
