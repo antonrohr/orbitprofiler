@@ -24,6 +24,8 @@ class ProcessManagerImpl final : public ProcessManager {
   explicit ProcessManagerImpl(const std::shared_ptr<grpc::Channel>& channel,
                               absl::Duration refresh_timeout);
 
+  ~ProcessManagerImpl() { Shutdown(); }
+
   void SetProcessListUpdateListener(const std::function<void(ProcessManager*)>& listener) override;
 
   std::vector<ProcessInfo> GetProcessList() const override;

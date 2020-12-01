@@ -5,8 +5,6 @@
 #ifndef ORBIT_QT_ORBIT_MAIN_WINDOW_H_
 #define ORBIT_QT_ORBIT_MAIN_WINDOW_H_
 
-#include <DisassemblyReport.h>
-
 #include <QApplication>
 #include <QLabel>
 #include <QLineEdit>
@@ -20,7 +18,11 @@
 
 #include "CallStackDataView.h"
 #include "CallTreeView.h"
+#include "Connections.h"
+#include "DisassemblyReport.h"
+#include "OrbitBase/Logging.h"
 #include "StatusListener.h"
+#include "TargetConfiguration.h"
 #include "servicedeploymanager.h"
 
 namespace Ui {
@@ -31,7 +33,10 @@ class OrbitMainWindow : public QMainWindow {
   Q_OBJECT
 
  public:
-  OrbitMainWindow(QApplication* a_App, orbit_qt::ServiceDeployManager* service_deploy_manager,
+  OrbitMainWindow(QApplication* app, orbit_qt::ConnectionConfiguration connection_configuration,
+                  uint32_t font_size);
+  // TODO (170468590) remove when not needed anymore
+  OrbitMainWindow(QApplication* app, orbit_qt::ServiceDeployManager* service_deploy_manager,
                   uint32_t font_size);
   ~OrbitMainWindow() override;
 
@@ -58,6 +63,10 @@ class OrbitMainWindow : public QMainWindow {
 
   Ui::OrbitMainWindow* GetUi() { return ui; }
 
+  std::optional<orbit_qt::ConnectionConfiguration> ClearConnectionConfiguration() {
+    return std::move(connection_configuration_);
+  }
+
  protected:
   void closeEvent(QCloseEvent* event) override;
 
@@ -73,6 +82,7 @@ class OrbitMainWindow : public QMainWindow {
   void OnFilterTracksTextChanged(const QString& text);
 
   void on_actionOpen_Preset_triggered();
+  void on_actionEnd_Session_triggered();
   void on_actionQuit_triggered();
   void on_actionSave_Preset_As_triggered();
 
@@ -96,12 +106,14 @@ class OrbitMainWindow : public QMainWindow {
   void StartMainTimer();
   void SetupCaptureToolbar();
   void SetupCodeView();
+  void SetupMainWindow(uint32_t font_size);
 
  private:
   QApplication* m_App;
   Ui::OrbitMainWindow* ui;
   QTimer* m_MainTimer = nullptr;
   std::vector<OrbitGLWidget*> m_GlWidgets;
+  QFrame* hint_frame_ = nullptr;
 
   // Capture toolbar.
   QIcon icon_start_capture_;
@@ -109,6 +121,8 @@ class OrbitMainWindow : public QMainWindow {
 
   // Status listener
   std::unique_ptr<StatusListener> status_listener_;
+
+  std::optional<orbit_qt::ConnectionConfiguration> connection_configuration_;
 };
 
 #endif  // ORBIT_QT_ORBIT_MAIN_WINDOW_H_
