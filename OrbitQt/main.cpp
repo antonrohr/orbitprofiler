@@ -314,6 +314,7 @@ int main(int argc, char* argv[]) {
 #endif
 
     QApplication app(argc, argv);
+    QApplication::setOrganizationName("The Orbit Authors");
     QApplication::setApplicationName("orbitprofiler");
 
     if (DevModeEnabledViaEnvironmentVariable()) {
