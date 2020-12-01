@@ -188,12 +188,12 @@ void ModulesDataView::UpdateModules(const ProcessData* process) {
 }
 
 void ModulesDataView::OnRefreshButtonClicked() {
-  const ProcessData* process = GOrbitApp->GetSelectedProcess();
+  ProcessData* process = GOrbitApp->GetMutableSelectedProcess();
   if (process == nullptr) {
     LOG("Unable to refresh module list, no process selected");
     return;
   }
-  GOrbitApp->UpdateProcessAndModuleList(process->pid());
+  GOrbitApp->UpdateProcessAndModuleList(process);
 }
 
 bool ModulesDataView::GetDisplayColor(int row, int /*column*/, unsigned char& red,

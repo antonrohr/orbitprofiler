@@ -46,6 +46,7 @@ class DataManager final {
   [[nodiscard]] int32_t selected_thread_id() const;
   [[nodiscard]] const TextBox* selected_text_box() const;
   [[nodiscard]] const ProcessData* selected_process() const;
+  [[nodiscard]] ProcessData* mutable_selected_process() const;
 
   void SelectTracepoint(const orbit_grpc_protos::TracepointInfo& info);
   void DeselectTracepoint(const orbit_grpc_protos::TracepointInfo& info);
@@ -81,7 +82,7 @@ class DataManager final {
   int32_t selected_thread_id_ = -1;
   const TextBox* selected_text_box_ = nullptr;
 
-  const ProcessData* selected_process_ = nullptr;
+  ProcessData* selected_process_ = nullptr;
 
   // DataManager needs a copy of this so that we can persist user choices like frame tracks between
   // captures.

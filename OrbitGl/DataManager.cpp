@@ -110,12 +110,17 @@ std::vector<FunctionInfo> DataManager::GetSelectedFunctions() const {
 
 void DataManager::set_selected_process(int32_t pid) {
   CHECK(std::this_thread::get_id() == main_thread_id_);
-  const ProcessData* process = GetProcessByPid(pid);
+  ProcessData* process = GetMutableProcessByPid(pid);
   CHECK(process != nullptr);
   selected_process_ = process;
 }
 
 const ProcessData* DataManager::selected_process() const {
+  CHECK(std::this_thread::get_id() == main_thread_id_);
+  return selected_process_;
+}
+
+ProcessData* DataManager::mutable_selected_process() const {
   CHECK(std::this_thread::get_id() == main_thread_id_);
   return selected_process_;
 }

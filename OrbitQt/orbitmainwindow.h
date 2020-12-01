@@ -5,8 +5,6 @@
 #ifndef ORBIT_QT_ORBIT_MAIN_WINDOW_H_
 #define ORBIT_QT_ORBIT_MAIN_WINDOW_H_
 
-#include <DisassemblyReport.h>
-
 #include <QApplication>
 #include <QLabel>
 #include <QLineEdit>
@@ -20,6 +18,9 @@
 
 #include "CallStackDataView.h"
 #include "CallTreeView.h"
+#include "ConnectionConfiguration.h"
+#include "DisassemblyReport.h"
+#include "OrbitBase/Logging.h"
 #include "StatusListener.h"
 #include "servicedeploymanager.h"
 
@@ -31,7 +32,10 @@ class OrbitMainWindow : public QMainWindow {
   Q_OBJECT
 
  public:
-  OrbitMainWindow(QApplication* a_App, orbit_qt::ServiceDeployManager* service_deploy_manager,
+  OrbitMainWindow(QApplication* app, orbit_qt::ConnectionConfiguration* connection_configuration,
+                  uint32_t font_size);
+  // TODO (170468590) remove when not needed anymore
+  OrbitMainWindow(QApplication* app, orbit_qt::ServiceDeployManager* service_deploy_manager,
                   uint32_t font_size);
   ~OrbitMainWindow() override;
 
@@ -73,6 +77,7 @@ class OrbitMainWindow : public QMainWindow {
   void OnFilterTracksTextChanged(const QString& text);
 
   void on_actionOpen_Preset_triggered();
+  void on_actionEnd_Session_triggered();
   void on_actionQuit_triggered();
   void on_actionSave_Preset_As_triggered();
 
@@ -96,12 +101,14 @@ class OrbitMainWindow : public QMainWindow {
   void StartMainTimer();
   void SetupCaptureToolbar();
   void SetupCodeView();
+  void SetupMainWindow(uint32_t font_size);
 
  private:
   QApplication* m_App;
   Ui::OrbitMainWindow* ui;
   QTimer* m_MainTimer = nullptr;
   std::vector<OrbitGLWidget*> m_GlWidgets;
+  QFrame* hint_frame_ = nullptr;
 
   // Capture toolbar.
   QIcon icon_start_capture_;
