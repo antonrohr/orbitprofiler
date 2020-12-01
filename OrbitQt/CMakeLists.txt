@@ -12,7 +12,7 @@ target_sources(
   OrbitQt
   PRIVATE CallTreeViewItemModel.h
           CallTreeWidget.h
-          ConnectionArtifacts.h
+          ConnectionConfiguration.h
           CopyKeySequenceEnabledTreeView.h
           CutoutWidget.h
           DeploymentConfigurations.h
