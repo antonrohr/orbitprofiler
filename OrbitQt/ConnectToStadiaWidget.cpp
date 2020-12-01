@@ -8,6 +8,7 @@
 #include <QRadioButton>
 #include <QSettings>
 #include <optional>
+#include <utility>
 
 #include "Error.h"
 #include "OrbitBase/Logging.h"
@@ -32,7 +33,7 @@ ConnectToStadiaWidget::ConnectToStadiaWidget(QWidget* parent)
   parent->installEventFilter(this);
 
   QSettings settings;
-  if (!settings.value(kRememberChosenInstance).toString().isEmpty()) {
+  if (settings.contains(kRememberChosenInstance)) {
     remembered_instance_id_ = settings.value(kRememberChosenInstance).toString();
     ui_->rememberCheckBox->setChecked(true);
   }
@@ -40,41 +41,13 @@ ConnectToStadiaWidget::ConnectToStadiaWidget(QWidget* parent)
   ui_->instancesTableView->setModel(&instance_model_);
 
   QObject::connect(ui_->connectToStadiaInstanceRadioButton, &QRadioButton::clicked, this,
-                   [this](bool checked) {
-                     if (checked) {
-                       emit Activated();
-                     } else {
-                       ui_->connectToStadiaInstanceRadioButton->setChecked(true);
-                     }
-                   });
-
+                   &ConnectToStadiaWidget::OnConnectToStadiaRadioButtonClicked);
   QObject::connect(this, &ConnectToStadiaWidget::ErrorOccurred, this,
-                   [this](const QString& message) {
-                     if (isVisible()) {
-                       QMessageBox::critical(this, QApplication::applicationName(), message);
-                     } else {
-                       ERROR("%s", message.toStdString());
-                     }
-                   });
-
+                   &ConnectToStadiaWidget::OnErrorOccurred);
   QObject::connect(ui_->instancesTableView->selectionModel(), &QItemSelectionModel::currentChanged,
-                   this, [this](const QModelIndex& current) {
-                     if (!current.isValid()) return;
-
-                     CHECK(current.model() == &instance_model_);
-                     stadia_connection_->instance = current.data(Qt::UserRole).value<Instance>();
-                     emit InstanceSelected();
-                   });
-
-  QObject::connect(ui_->rememberCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
-    QSettings settings;
-    if (checked) {
-      CHECK(stadia_connection_->instance != std::nullopt);
-      settings.setValue(kRememberChosenInstance, stadia_connection_->instance->id);
-    } else {
-      settings.remove(kRememberChosenInstance);
-    }
-  });
+                   this, &ConnectToStadiaWidget::OnSelectionChanged);
+  QObject::connect(ui_->rememberCheckBox, &QCheckBox::toggled, this,
+                   &ConnectToStadiaWidget::OnRememberCheckBoxToggled);
 
   SetupAndStartStateMachine();
 }
@@ -102,12 +75,10 @@ void ConnectToStadiaWidget::SetupAndStartStateMachine() {
   // STATES list
   auto* s_ggp_not_available = new QState();
   state_machine_.addState(s_ggp_not_available);
-  auto* s_instances_empty = new QState();
-  state_machine_.addState(s_instances_empty);
+  auto* s_idle = new QState();
+  state_machine_.addState(s_idle);
   auto* s_instances_loading = new QState();
   state_machine_.addState(s_instances_loading);
-  auto* s_instances_loaded = new QState();
-  state_machine_.addState(s_instances_loaded);
   auto* s_instance_selected = new QState();
   state_machine_.addState(s_instance_selected);
   auto* s_waiting_for_creds = new QState();
@@ -121,15 +92,13 @@ void ConnectToStadiaWidget::SetupAndStartStateMachine() {
   // STATE s_ggp_not_available
   s_ggp_not_available->assignProperty(this, "enabled", false);
   s_ggp_not_available->assignProperty(ui_->connectToStadiaInstanceRadioButton, "checked", false);
-  // STATE s_instances_empty
-  s_instances_empty->assignProperty(ui_->refreshButton, "enabled", true);
+  // STATE s_idle
+  s_idle->assignProperty(ui_->refreshButton, "enabled", true);
   // STATE s_instances_loading
   s_instances_loading->assignProperty(ui_->instancesTableOverlay, "visible", true);
   s_instances_loading->assignProperty(ui_->instancesTableOverlay, "statusMessage",
                                       "Loading instances...");
   s_instances_loading->assignProperty(ui_->instancesTableOverlay, "cancelable", false);
-  // STATE s_instances_loaded
-  s_instances_loaded->assignProperty(ui_->refreshButton, "enabled", true);
   // STATE s_instance_selected
   s_instance_selected->assignProperty(ui_->refreshButton, "enabled", true);
   s_instance_selected->assignProperty(ui_->connectButton, "enabled", true);
@@ -150,23 +119,18 @@ void ConnectToStadiaWidget::SetupAndStartStateMachine() {
 
   // STATE s_ggp_not_available
 
-  // TRANSITIONS (and entered/xit events)
-  // STATE s_instances_empty
-  s_instances_empty->addTransition(ui_->refreshButton, &QPushButton::clicked, s_instances_loading);
+  // TRANSITIONS (and entered/exit events)
+  // STATE s_idle
+  s_idle->addTransition(ui_->refreshButton, &QPushButton::clicked, s_instances_loading);
+  s_idle->addTransition(this, &ConnectToStadiaWidget::InstanceSelected, s_instance_selected);
 
   // STATE s_instances_loading
   QObject::connect(s_instances_loading, &QState::entered, this,
                    &ConnectToStadiaWidget::ReloadInstances);
 
-  s_instances_loading->addTransition(this, &ConnectToStadiaWidget::ErrorOccurred,
-                                     s_instances_empty);
-  s_instances_loading->addTransition(this, &ConnectToStadiaWidget::ReceivedInstances,
-                                     s_instances_loaded);
+  s_instances_loading->addTransition(this, &ConnectToStadiaWidget::ErrorOccurred, s_idle);
+  s_instances_loading->addTransition(this, &ConnectToStadiaWidget::ReceivedInstances, s_idle);
 
-  // STATE s_instances_loaded
-  s_instances_loaded->addTransition(ui_->refreshButton, &QPushButton::clicked, s_instances_loading);
-  s_instances_loaded->addTransition(this, &ConnectToStadiaWidget::InstanceSelected,
-                                    s_instance_selected);
   // STATE s_instance_selected
   s_instance_selected->addTransition(ui_->refreshButton, &QPushButton::clicked,
                                      s_instances_loading);
@@ -228,61 +192,7 @@ void ConnectToStadiaWidget::ReloadInstances() {
   instance_model_.SetInstances({});
 
   ggp_client_->GetInstancesAsync([this](outcome::result<QVector<Instance>> instances) {
-    if (!instances) {
-      emit ErrorOccurred(QString("Orbit was unable to retrieve the list of available Stadia "
-                                 "instances. The error message was: %1")
-                             .arg(QString::fromStdString(instances.error().message())));
-      return;
-    }
-
-    instance_model_.SetInstances(instances.value());
-    emit ReceivedInstances();
-
-    for (const auto& instance : instances.value()) {
-      std::string instance_id = instance.id.toStdString();
-
-      if (remembered_instance_id_ != std::nullopt) {
-        std::optional<int> row =
-            instance_model_.GetRowOfInstanceById(remembered_instance_id_.value());
-        if (row != std::nullopt) {
-          ui_->instancesTableView->selectRow(row.value());
-          emit Connect();
-          remembered_instance_id_ = std::nullopt;
-        } else {
-          ui_->rememberCheckBox->setChecked(false);
-        }
-      }
-
-      if (instance_credentials_.contains(instance_id) &&
-          instance_credentials_.at(instance_id).has_value()) {
-        continue;
-      }
-
-      ggp_client_->GetSshInfoAsync(
-          instance, [this, instance_id = std::move(instance_id)](
-                        outcome::result<OrbitGgp::SshInfo> ssh_info_result) {
-            if (!ssh_info_result) {
-              std::string error_message = absl::StrFormat(
-                  "Unable to load encryption credentials for instance with id %s: %s", instance_id,
-                  ssh_info_result.error().message());
-              ERROR("%s", error_message);
-              instance_credentials_.emplace(instance_id, ErrorMessage(error_message));
-            } else {
-              LOG("Received ssh info for instance with id: %s", instance_id);
-
-              OrbitGgp::SshInfo& ssh_info{ssh_info_result.value()};
-              OrbitSsh::Credentials credentials;
-              credentials.addr_and_port = {ssh_info.host.toStdString(), ssh_info.port};
-              credentials.key_path = ssh_info.key_path.toStdString();
-              credentials.known_hosts_path = ssh_info.known_hosts_path.toStdString();
-              credentials.user = ssh_info.user.toStdString();
-
-              instance_credentials_.emplace(instance_id, std::move(credentials));
-            }
-
-            emit ReceivedSshInfo();
-          });
-    }
+    OnInstancesLoaded(std::move(instances));
   });
 }
 
@@ -357,7 +267,7 @@ void ConnectToStadiaWidget::DeployOrbitService() {
 void ConnectToStadiaWidget::Disconnect() {
   stadia_connection_->grpc_channel = nullptr;
 
-  // TODO(antonrohr) currently does not work
+  // TODO(174561221) currently does not work
   // if (stadia_connection_->service_deploy_manager != nullptr) {
   //   stadia_connection_->service_deploy_manager->Shutdown();
   // }
@@ -366,6 +276,103 @@ void ConnectToStadiaWidget::Disconnect() {
   ui_->rememberCheckBox->setChecked(false);
 
   emit Disconnected();
+}
+
+void ConnectToStadiaWidget::OnConnectToStadiaRadioButtonClicked(bool checked) {
+  if (checked) {
+    emit Activated();
+  } else {
+    ui_->connectToStadiaInstanceRadioButton->setChecked(true);
+  }
+}
+
+void ConnectToStadiaWidget::OnErrorOccurred(const QString& message) {
+  if (isVisible()) {
+    QMessageBox::critical(this, QApplication::applicationName(), message);
+  } else {
+    ERROR("%s", message.toStdString());
+  }
+}
+
+void ConnectToStadiaWidget::OnSelectionChanged(const QModelIndex& current) {
+  if (!current.isValid()) return;
+
+  CHECK(current.model() == &instance_model_);
+  stadia_connection_->instance = current.data(Qt::UserRole).value<Instance>();
+  emit InstanceSelected();
+}
+
+void ConnectToStadiaWidget::OnRememberCheckBoxToggled(bool checked) {
+  QSettings settings;
+  if (checked) {
+    CHECK(stadia_connection_->instance != std::nullopt);
+    settings.setValue(kRememberChosenInstance, stadia_connection_->instance->id);
+  } else {
+    settings.remove(kRememberChosenInstance);
+  }
+}
+
+void ConnectToStadiaWidget::OnInstancesLoaded(
+    outcome::result<QVector<OrbitGgp::Instance>> instances) {
+  if (!instances) {
+    emit ErrorOccurred(QString("Orbit was unable to retrieve the list of available Stadia "
+                               "instances. The error message was: %1")
+                           .arg(QString::fromStdString(instances.error().message())));
+    return;
+  }
+
+  instance_model_.SetInstances(instances.value());
+  emit ReceivedInstances();
+
+  for (const auto& instance : instances.value()) {
+    std::string instance_id = instance.id.toStdString();
+
+    if (remembered_instance_id_ != std::nullopt) {
+      std::optional<int> row =
+          instance_model_.GetRowOfInstanceById(remembered_instance_id_.value());
+      if (row != std::nullopt) {
+        ui_->instancesTableView->selectRow(row.value());
+        emit Connect();
+        remembered_instance_id_ = std::nullopt;
+      } else {
+        ui_->rememberCheckBox->setChecked(false);
+      }
+    }
+
+    if (instance_credentials_.contains(instance_id) &&
+        instance_credentials_.at(instance_id).has_value()) {
+      continue;
+    }
+
+    ggp_client_->GetSshInfoAsync(instance, [this, instance_id = std::move(instance_id)](
+                                               outcome::result<OrbitGgp::SshInfo> ssh_info_result) {
+      OnSshInfoLoaded(std::move(ssh_info_result), instance_id);
+    });
+  }
+}
+
+void ConnectToStadiaWidget::OnSshInfoLoaded(outcome::result<OrbitGgp::SshInfo> ssh_info_result,
+                                            std::string instance_id) {
+  if (!ssh_info_result) {
+    std::string error_message =
+        absl::StrFormat("Unable to load encryption credentials for instance with id %s: %s",
+                        instance_id, ssh_info_result.error().message());
+    ERROR("%s", error_message);
+    instance_credentials_.emplace(instance_id, ErrorMessage(error_message));
+  } else {
+    LOG("Received ssh info for instance with id: %s", instance_id);
+
+    OrbitGgp::SshInfo& ssh_info{ssh_info_result.value()};
+    OrbitSsh::Credentials credentials;
+    credentials.addr_and_port = {ssh_info.host.toStdString(), ssh_info.port};
+    credentials.key_path = ssh_info.key_path.toStdString();
+    credentials.known_hosts_path = ssh_info.known_hosts_path.toStdString();
+    credentials.user = ssh_info.user.toStdString();
+
+    instance_credentials_.emplace(instance_id, std::move(credentials));
+  }
+
+  emit ReceivedSshInfo();
 }
 
 }  // namespace orbit_qt

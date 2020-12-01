@@ -7,13 +7,16 @@
 
 #include <QSettings>
 #include <QStateMachine>
+#include <QVector>
 #include <QWidget>
 #include <memory>
 
 #include "ConnectionConfiguration.h"
 #include "OrbitBase/Logging.h"
 #include "OrbitGgp/Client.h"
+#include "OrbitGgp/Instance.h"
 #include "OrbitGgp/InstanceItemModel.h"
+#include "OrbitGgp/SshInfo.h"
 #include "ui_ConnectToStadiaWidget.h"
 
 namespace orbit_qt {
@@ -42,6 +45,10 @@ class ConnectToStadiaWidget : public QWidget {
   void CheckCredentialsAvailable();
   void DeployOrbitService();
   void Disconnect();
+  void OnConnectToStadiaRadioButtonClicked(bool checked);
+  void OnErrorOccurred(const QString& message);
+  void OnSelectionChanged(const QModelIndex& current);
+  void OnRememberCheckBoxToggled(bool checked);
 
  signals:
   void ErrorOccurred(const QString& message);
@@ -65,6 +72,8 @@ class ConnectToStadiaWidget : public QWidget {
   absl::flat_hash_map<std::string, ErrorMessageOr<OrbitSsh::Credentials>> instance_credentials_;
 
   void SetupAndStartStateMachine();
+  void OnInstancesLoaded(outcome::result<QVector<OrbitGgp::Instance>> instances);
+  void OnSshInfoLoaded(outcome::result<OrbitGgp::SshInfo> ssh_info_result, std::string instance_id);
 };
 
 }  // namespace orbit_qt
