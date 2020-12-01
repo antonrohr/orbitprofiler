@@ -136,6 +136,7 @@ void OrbitTreeView::resizeEvent(QResizeEvent* event) {
     QSize header_size = size();
     for (size_t i = 0; i < model_->GetDataView()->GetColumns().size(); ++i) {
       float ratio = model_->GetDataView()->GetColumns()[i].ratio;
+      LOG("resize ratio: %f", ratio);
       if (ratio > 0.f) {
         header()->resizeSection(i, static_cast<int>(header_size.width() * ratio));
       }

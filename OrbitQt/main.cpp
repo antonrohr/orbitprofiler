@@ -15,6 +15,7 @@
 #include <QProgressDialog>
 #include <QStyleFactory>
 #include <optional>
+#include <variant>
 
 #ifdef _WIN32
 #include <process.h>
@@ -24,6 +25,7 @@
 
 #include "App.h"
 #include "ApplicationOptions.h"
+#include "ConnectionConfiguration.h"
 #include "DeploymentConfigurations.h"
 #include "Error.h"
 #include "MainThreadExecutorImpl.h"
@@ -35,6 +37,7 @@
 #include "OrbitStartupWindow.h"
 #include "OrbitVersion/OrbitVersion.h"
 #include "Path.h"
+#include "ProfilingTargetDialog.h"
 #include "opengldetect.h"
 #include "orbitmainwindow.h"
 #include "servicedeploymanager.h"
@@ -79,6 +82,9 @@ ABSL_FLAG(bool, enable_tracepoint_feature, false,
 
 ABSL_FLAG(bool, thread_state, false, "Collect thread states");
 
+// TODO(170468590): Remove this flag when the new UI is finished
+ABSL_FLAG(bool, enable_ui_beta, false, "Enable the new user interface");
+
 using ServiceDeployManager = orbit_qt::ServiceDeployManager;
 using DeploymentConfiguration = orbit_qt::DeploymentConfiguration;
 using OrbitStartupWindow = orbit_qt::OrbitStartupWindow;
@@ -87,6 +93,8 @@ using ScopedConnection = OrbitSshQt::ScopedConnection;
 using GrpcPort = ServiceDeployManager::GrpcPort;
 using SshCredentials = OrbitSsh::Credentials;
 using Context = OrbitSsh::Context;
+using orbit_qt::NoConnection;
+using orbit_qt::StadiaConnection;
 
 static outcome::result<GrpcPort> DeployOrbitService(
     std::optional<ServiceDeployManager>& service_deploy_manager,
@@ -145,7 +153,8 @@ static outcome::result<void> RunUiInstance(
 
   std::optional<std::error_code> error;
 
-  GOrbitApp = OrbitApp::Create(std::move(options), CreateMainThreadExecutor());
+  std::unique_ptr<MainThreadExecutor> main_thread_executer = CreateMainThreadExecutor();
+  GOrbitApp = OrbitApp::Create(std::move(options), main_thread_executer.get());
 
   {  // Scoping of QT UI Resources
     constexpr uint32_t kDefaultFontSize = 14;
@@ -185,6 +194,95 @@ static outcome::result<void> RunUiInstance(
     return outcome::failure(error.value());
   } else {
     return outcome::success();
+  }
+}
+
+void RunBetaUiInstance(QApplication* app,
+                       std::optional<DeploymentConfiguration> deployment_configuration,
+                       const Context* ssh_context) {
+  qRegisterMetaType<std::error_code>();
+  // TODO(170468590) handle --local flag
+  if (!deployment_configuration) {
+    ERROR("--local flag not supported by UI beta");
+    return;
+  }
+
+  const GrpcPort grpc_port{/*.grpc_port =*/absl::GetFlag(FLAGS_grpc_port)};
+
+  std::unique_ptr<MainThreadExecutor> main_thread_executor = CreateMainThreadExecutor();
+  orbit_qt::ConnectionConfiguration connection_config;
+  orbit_qt::ProfilingTargetDialog target_dialog{&connection_config, ssh_context, grpc_port,
+                                                &(deployment_configuration.value()),
+                                                main_thread_executor.get()};
+
+  while (true) {
+    const int dialog_return_code = target_dialog.exec();
+    if (dialog_return_code != 1) {  // User closed dialog
+      break;
+    }
+
+    GOrbitApp = OrbitApp::Create(main_thread_executor.get());
+
+    int app_return_code = 0;
+
+    {  // Scoping of QT UI Resources
+      constexpr uint32_t kDefaultFontSize = 14;
+
+      OrbitMainWindow w(app, &connection_config, kDefaultFontSize);
+
+      // "resize" is required to make "showMaximized" work properly.
+      w.resize(1280, 720);
+      w.showMaximized();
+
+      ServiceDeployManager* service_deploy_manager_ptr = nullptr;
+      std::visit(
+          [&service_deploy_manager_ptr](auto&& connection) {
+            using Connection = std::decay_t<decltype(connection)>;
+            if constexpr (std::is_same_v<Connection, const orbit_qt::StadiaConnection*>) {
+              service_deploy_manager_ptr = connection->service_deploy_manager.get();
+            } else if constexpr (std::is_same_v<Connection, const orbit_qt::LocalConnection*>) {
+              // TODO(antonrohr) Add when local profiling is supported
+              UNREACHABLE();
+            } else if constexpr (std::is_same_v<Connection, const orbit_qt::NoConnection*>) {
+            } else {
+              UNREACHABLE();
+            }
+          },
+          connection_config);
+
+      QMessageBox box(QMessageBox::Critical, QApplication::applicationName(), "", QMessageBox::Ok);
+      auto error_handler = [&]() -> ScopedConnection {
+        if (service_deploy_manager_ptr == nullptr) {
+          return ScopedConnection();
+        }
+
+        return OrbitSshQt::ScopedConnection{QObject::connect(
+            service_deploy_manager_ptr, &ServiceDeployManager::socketErrorOccurred,
+            service_deploy_manager_ptr, [&](std::error_code error) {
+              main_thread_executor->Schedule([&box, &w, error] {
+                box.setText(
+                    QString("Connection error: %1").arg(QString::fromStdString(error.message())));
+                box.exec();
+                w.close();
+                QApplication::exit(1);
+              });
+              // QTimer::singleShot(5000, []() {  });
+            })};
+      }();
+
+      app_return_code = QApplication::exec();
+    }
+
+    Orbit_ImGui_Shutdown();
+    GOrbitApp->OnExit();
+
+    if (app_return_code == 0) {  // User closed window
+      break;
+    } else if (app_return_code == 1) {  // User clicked end session, or socket error occurred.
+      continue;
+    } else {
+      UNREACHABLE();
+    }
   }
 }
 
@@ -314,6 +412,7 @@ int main(int argc, char* argv[]) {
 #endif
 
     QApplication app(argc, argv);
+    QApplication::setOrganizationName("The Orbit Authors");
     QApplication::setApplicationName("orbitprofiler");
 
     if (DevModeEnabledViaEnvironmentVariable()) {
@@ -379,6 +478,11 @@ int main(int argc, char* argv[]) {
       DisplayErrorToUser(QString("An error occurred while initializing ssh: %1")
                              .arg(QString::fromStdString(context.error().message())));
       return -1;
+    }
+
+    if (absl::GetFlag(FLAGS_enable_ui_beta)) {
+      RunBetaUiInstance(&app, deployment_configuration, &context.value());
+      return 0;
     }
 
     while (true) {

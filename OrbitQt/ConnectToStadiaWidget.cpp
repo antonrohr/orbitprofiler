@@ -26,22 +26,23 @@ using OrbitGgp::Instance;
 using OrbitSshQt::ScopedConnection;
 
 ConnectToStadiaWidget::ConnectToStadiaWidget(QWidget* parent)
-    : QWidget(parent),
-      ui_(std::make_unique<Ui::ConnectToStadiaWidget>()),
-      settings_("The Orbit Authors", "Orbit Profiler") {
+    : QWidget(parent), ui_(std::make_unique<Ui::ConnectToStadiaWidget>()) {
   ui_->setupUi(this);
 
-  if (!settings_.value(kRememberChosenInstance).toString().isEmpty()) {
-    remembered_instance_id_ = settings_.value(kRememberChosenInstance).toString();
+  parent->installEventFilter(this);
+
+  QSettings settings;
+  if (!settings.value(kRememberChosenInstance).toString().isEmpty()) {
+    remembered_instance_id_ = settings.value(kRememberChosenInstance).toString();
     ui_->rememberCheckBox->setChecked(true);
   }
 
   ui_->instancesTableView->setModel(&instance_model_);
 
-  QObject::connect(ui_->connectToStadiaInstanceRadioButton, &QRadioButton::toggled, this,
+  QObject::connect(ui_->connectToStadiaInstanceRadioButton, &QRadioButton::clicked, this,
                    [this](bool checked) {
                      if (checked) {
-                       emit Selected();
+                       emit Activated();
                      } else {
                        ui_->connectToStadiaInstanceRadioButton->setChecked(true);
                      }
@@ -49,7 +50,11 @@ ConnectToStadiaWidget::ConnectToStadiaWidget(QWidget* parent)
 
   QObject::connect(this, &ConnectToStadiaWidget::ErrorOccurred, this,
                    [this](const QString& message) {
-                     QMessageBox::critical(this, QApplication::applicationName(), message);
+                     if (isVisible()) {
+                       QMessageBox::critical(this, QApplication::applicationName(), message);
+                     } else {
+                       ERROR("%s", message.toStdString());
+                     }
                    });
 
   QObject::connect(ui_->instancesTableView->selectionModel(), &QItemSelectionModel::currentChanged,
@@ -57,26 +62,38 @@ ConnectToStadiaWidget::ConnectToStadiaWidget(QWidget* parent)
                      if (!current.isValid()) return;
 
                      CHECK(current.model() == &instance_model_);
-                     connection_artifacts_->selected_instance_ =
-                         current.data(Qt::UserRole).value<Instance>();
+                     stadia_connection_->instance = current.data(Qt::UserRole).value<Instance>();
                      emit InstanceSelected();
                    });
 
   QObject::connect(ui_->rememberCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+    QSettings settings;
     if (checked) {
-      CHECK(connection_artifacts_->selected_instance_ != std::nullopt);
-      settings_.setValue(kRememberChosenInstance, connection_artifacts_->selected_instance_->id);
+      CHECK(stadia_connection_->instance != std::nullopt);
+      settings.setValue(kRememberChosenInstance, stadia_connection_->instance->id);
     } else {
-      settings_.remove(kRememberChosenInstance);
+      settings.remove(kRememberChosenInstance);
     }
   });
 
   SetupAndStartStateMachine();
 }
 
-void ConnectToStadiaWidget::SetConnectionArtifacts(ConnectionArtifacts* connection_artifacts) {
-  CHECK(connection_artifacts != nullptr);
-  connection_artifacts_ = connection_artifacts;
+bool ConnectToStadiaWidget::eventFilter(QObject* obj, QEvent* event) {
+  if (obj == parent() && event->type() == QEvent::Resize) {
+    ui_->contentFrame->resize(size());
+  }
+  return false;
+}
+
+void ConnectToStadiaWidget::SetActive(bool value) {
+  ui_->contentFrame->setEnabled(value);
+  ui_->connectToStadiaInstanceRadioButton->setChecked(value);
+}
+
+void ConnectToStadiaWidget::SetStadiaConnection(StadiaConnection* stadia_connection) {
+  CHECK(stadia_connection != nullptr);
+  stadia_connection_ = stadia_connection;
 }
 
 void ConnectToStadiaWidget::SetupAndStartStateMachine() {
@@ -182,12 +199,13 @@ void ConnectToStadiaWidget::SetupAndStartStateMachine() {
   // STATE s_connected
   QObject::connect(s_connected, &QState::entered, this, [this] {
     ui_->instancesTableOverlay->SetStatusMessage(
-        QString{"Connected to %1"}.arg(connection_artifacts_->selected_instance_->display_name));
+        QString{"Connected to %1"}.arg(stadia_connection_->instance->display_name));
   });
   QObject::connect(s_connected, &QState::exited, this, &ConnectToStadiaWidget::Disconnect);
 
   s_connected->addTransition(ui_->instancesTableOverlay, &OverlayWidget::Cancelled,
                              s_instance_selected);
+  s_connected->addTransition(this, &ConnectToStadiaWidget::ErrorOccurred, s_instance_selected);
 
   // START the state machine
   auto client_result = OrbitGgp::Client::Create(this);
@@ -195,9 +213,11 @@ void ConnectToStadiaWidget::SetupAndStartStateMachine() {
     ui_->connectToStadiaInstanceRadioButton->setToolTip(
         QString::fromStdString(client_result.error().message()));
     state_machine_.setInitialState(s_ggp_not_available);
+    SetActive(false);
   } else {
     ggp_client_ = client_result.value();
     state_machine_.setInitialState(s_instances_loading);
+    SetActive(true);
   }
 
   state_machine_.start();
@@ -267,9 +287,9 @@ void ConnectToStadiaWidget::ReloadInstances() {
 }
 
 void ConnectToStadiaWidget::CheckCredentialsAvailable() {
-  CHECK(connection_artifacts_->selected_instance_);
+  CHECK(stadia_connection_->instance);
 
-  const std::string& instance_id = connection_artifacts_->selected_instance_->id.toStdString();
+  const std::string& instance_id = stadia_connection_->instance->id.toStdString();
 
   if (!instance_credentials_.contains(instance_id)) return;
 
@@ -283,26 +303,25 @@ void ConnectToStadiaWidget::CheckCredentialsAvailable() {
 }
 
 void ConnectToStadiaWidget::DeployOrbitService() {
-  CHECK(connection_artifacts_->service_deploy_manager_ == nullptr);
-  CHECK(connection_artifacts_->selected_instance_);
-  const std::string instance_id = connection_artifacts_->selected_instance_->id.toStdString();
+  CHECK(stadia_connection_->service_deploy_manager == nullptr);
+  CHECK(stadia_connection_->instance);
+  const std::string instance_id = stadia_connection_->instance->id.toStdString();
   CHECK(instance_credentials_.contains(instance_id));
   CHECK(instance_credentials_.at(instance_id).has_value());
 
   const OrbitSsh::Credentials& credentials{instance_credentials_.at(instance_id).value()};
 
-  connection_artifacts_->CreateServiceDeployManager(credentials);
+  stadia_connection_->CreateServiceDeployManager(credentials);
 
   ScopedConnection label_connection{
-      QObject::connect(connection_artifacts_->service_deploy_manager_.get(),
+      QObject::connect(stadia_connection_->service_deploy_manager.get(),
                        &orbit_qt::ServiceDeployManager::statusMessage, ui_->instancesTableOverlay,
                        &OverlayWidget::SetStatusMessage)};
-  ScopedConnection cancel_connection{
-      QObject::connect(ui_->instancesTableOverlay, &OverlayWidget::Cancelled,
-                       connection_artifacts_->service_deploy_manager_.get(),
-                       &orbit_qt::ServiceDeployManager::Cancel)};
+  ScopedConnection cancel_connection{QObject::connect(
+      ui_->instancesTableOverlay, &OverlayWidget::Cancelled,
+      stadia_connection_->service_deploy_manager.get(), &orbit_qt::ServiceDeployManager::Cancel)};
 
-  const auto deployment_result = connection_artifacts_->service_deploy_manager_->Exec();
+  const auto deployment_result = stadia_connection_->service_deploy_manager->Exec();
   if (!deployment_result) {
     Disconnect();
     if (deployment_result.error() ==
@@ -315,26 +334,34 @@ void ConnectToStadiaWidget::DeployOrbitService() {
     return;
   }
 
+  QObject::connect(
+      stadia_connection_->service_deploy_manager.get(), &ServiceDeployManager::socketErrorOccurred,
+      this, [this](std::error_code error) {
+        emit ErrorOccurred(QString("The connection to instance %1 failed with error: %2")
+                               .arg(stadia_connection_->instance->display_name)
+                               .arg(QString::fromStdString(error.message())));
+      });
+
   LOG("Deployment successful, grpc_port: %d", deployment_result.value().grpc_port);
-  CHECK(connection_artifacts_->grpc_channel_ == nullptr);
+  CHECK(stadia_connection_->grpc_channel == nullptr);
   std::string grpc_server_address =
       absl::StrFormat("127.0.0.1:%d", deployment_result.value().grpc_port);
   LOG("Starting gRPC channel to: %s", grpc_server_address);
-  connection_artifacts_->grpc_channel_ = grpc::CreateCustomChannel(
+  stadia_connection_->grpc_channel = grpc::CreateCustomChannel(
       grpc_server_address, grpc::InsecureChannelCredentials(), grpc::ChannelArguments());
-  CHECK(connection_artifacts_->grpc_channel_ != nullptr);
+  CHECK(stadia_connection_->grpc_channel != nullptr);
 
   emit Connected();
 }
 
 void ConnectToStadiaWidget::Disconnect() {
-  connection_artifacts_->grpc_channel_ = nullptr;
+  stadia_connection_->grpc_channel = nullptr;
 
   // TODO(antonrohr) currently does not work
-  // if (connection_artifacts_->service_deploy_manager_ != nullptr) {
-  //   connection_artifacts_->service_deploy_manager_->Shutdown();
+  // if (stadia_connection_->service_deploy_manager != nullptr) {
+  //   stadia_connection_->service_deploy_manager->Shutdown();
   // }
-  connection_artifacts_->service_deploy_manager_ = nullptr;
+  stadia_connection_->service_deploy_manager = nullptr;
 
   ui_->rememberCheckBox->setChecked(false);
 

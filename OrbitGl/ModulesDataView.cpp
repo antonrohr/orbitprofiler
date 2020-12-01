@@ -188,12 +188,14 @@ void ModulesDataView::UpdateModules(const ProcessData* process) {
 }
 
 void ModulesDataView::OnRefreshButtonClicked() {
-  const ProcessData* process = GOrbitApp->GetSelectedProcess();
+  // TODO(170468590) this check will not be necessary anymore with the ui beta. The refresh button
+  // should then only be enabled when Orbit is connected.
+  ProcessData* process = GOrbitApp->GetMutableSelectedProcess();
   if (process == nullptr) {
     LOG("Unable to refresh module list, no process selected");
     return;
   }
-  GOrbitApp->UpdateProcessAndModuleList(process->pid());
+  GOrbitApp->UpdateProcessAndModuleList(process);
 }
 
 bool ModulesDataView::GetDisplayColor(int row, int /*column*/, unsigned char& red,

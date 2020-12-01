@@ -51,50 +51,13 @@ QPushButton:disabled {
        <enum>Qt::Horizontal</enum>
       </property>
       <widget class="QTabWidget" name="MainTabWidget">
+       <property name="tabPosition">
+        <enum>QTabWidget::West</enum>
+       </property>
        <property name="currentIndex">
         <number>0</number>
        </property>
-       <widget class="QWidget" name="HomeTab">
-        <attribute name="title">
-         <string>Home</string>
-        </attribute>
-        <layout class="QGridLayout" name="gridLayout_7">
-         <item row="0" column="1">
-          <widget class="QSplitter" name="HomeHorizontalSplitter">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-           <widget class="QSplitter" name="HomeVerticalSplitter">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="baseSize">
-             <size>
-              <width>0</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <widget class="ProcessLauncherWidget" name="ProcessesList" native="true"/>
-            <widget class="OrbitDataViewPanel" name="SessionList" native="true"/>
-           </widget>
-           <widget class="OrbitDataViewPanel" name="ModulesList" native="true"/>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QWidget" name="CaptureTab">
+       <widget class="QWidget" name="captureFrame">
         <attribute name="title">
          <string>Capture</string>
         </attribute>
@@ -216,21 +179,33 @@ QPushButton:disabled {
         <zorder>capture_toolbar</zorder>
         <zorder>filterPanel</zorder>
        </widget>
+       <widget class="QWidget" name="symbolsBox">
+        <attribute name="title">
+         <string>Symbols</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_7">
+         <item row="0" column="1">
+          <widget class="QSplitter" name="splitter_3">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <widget class="QSplitter" name="splitter">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <widget class="OrbitDataViewPanel" name="PresetsList" native="true"/>
+            <widget class="OrbitDataViewPanel" name="ModulesList" native="true"/>
+           </widget>
+           <widget class="OrbitDataViewPanel" name="FunctionsList" native="true"/>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </widget>
       <widget class="QTabWidget" name="RightTabWidget">
        <property name="currentIndex">
         <number>0</number>
        </property>
-       <widget class="QWidget" name="FunctionsTab">
-        <attribute name="title">
-         <string>Functions</string>
-        </attribute>
-        <layout class="QGridLayout" name="functionsTabLayout">
-         <item row="0" column="0">
-          <widget class="OrbitDataViewPanel" name="FunctionsList" native="true"/>
-         </item>
-        </layout>
-       </widget>
        <widget class="QWidget" name="CallStackTab">
         <attribute name="title">
          <string>Callstack</string>
@@ -404,6 +379,7 @@ QPushButton:disabled {
     <addaction name="actionOpen_Preset"/>
     <addaction name="actionSave_Preset_As"/>
     <addaction name="separator"/>
+    <addaction name="actionEnd_Session"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -538,6 +514,15 @@ QPushButton:disabled {
     <string>Help</string>
    </property>
   </action>
+  <action name="actionEnd_Session">
+   <property name="icon">
+    <iconset resource="../icons/orbiticons.qrc">
+     <normaloff>:/actions/keyboard_arrow_left</normaloff>:/actions/keyboard_arrow_left</iconset>
+   </property>
+   <property name="text">
+    <string>End Session</string>
+   </property>
+  </action>
   <action name="actionQuit">
    <property name="icon">
     <iconset resource="../icons/orbiticons.qrc">
@@ -629,12 +614,6 @@ QPushButton:disabled {
    <class>OrbitGLWidget</class>
    <extends>QOpenGLWidget</extends>
    <header>orbitglwidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>ProcessLauncherWidget</class>
-   <extends>QWidget</extends>
-   <header>processlauncherwidget.h</header>
-   <container>1</container>
   </customwidget>
   <customwidget>
    <class>OrbitLiveFunctions</class>

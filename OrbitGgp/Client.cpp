@@ -47,7 +47,7 @@ void RunProcessWithTimeout(const QString& program, const QStringList& arguments,
                    parent,
                    [process, timeout_timer, callback](const int exit_code,
                                                       const QProcess::ExitStatus exit_status) {
-                     if (timeout_timer) {
+                     if (timeout_timer != nullptr) {
                        timeout_timer->stop();
                        timeout_timer->deleteLater();
                      }
@@ -66,6 +66,17 @@ void RunProcessWithTimeout(const QString& program, const QStringList& arguments,
                      process->deleteLater();
                    });
 
+  QObject::connect(process, &QProcess::errorOccurred, parent, [timeout_timer, process, callback]() {
+    if (timeout_timer != nullptr) {
+      timeout_timer->stop();
+      timeout_timer->deleteLater();
+    }
+    ERROR("Ggp list instances request failed with error: %s",
+          process->errorString().toStdString().c_str());
+    callback(Error::kGgpListInstancesFailed);
+    process->deleteLater();
+  });
+
   process->start(QIODevice::ReadOnly);
   timeout_timer->start(kDefaultTimeoutInMs);
 }
@@ -74,6 +85,7 @@ void RunProcessWithTimeout(const QString& program, const QStringList& arguments,
 
 outcome::result<QPointer<Client>> Client::Create(QObject* parent) {
   QProcess ggp_process{};
+  // TODO(antonrohr) this does not seem to work properly on windows.
   ggp_process.setProgram("ggp");
   ggp_process.setArguments({"version"});
   ggp_process.start(QIODevice::ReadOnly);

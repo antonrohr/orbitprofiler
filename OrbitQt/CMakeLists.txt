@@ -12,7 +12,8 @@ target_sources(
   OrbitQt
   PRIVATE CallTreeViewItemModel.h
           CallTreeWidget.h
-          ConnectionArtifacts.h
+          ConnectionConfiguration.h
+          ConnectToStadiaWidget.h
           CopyKeySequenceEnabledTreeView.h
           CutoutWidget.h
           DeploymentConfigurations.h
@@ -36,6 +37,7 @@ target_sources(
           ProcessItemModel.h
           OverlayWidget.h
           processlauncherwidget.h
+          ProfilingTargetDialog.h
           resource.h
           servicedeploymanager.h
           TutorialContent.h
@@ -74,6 +76,8 @@ target_sources(
           OverlayWidget.cpp
           OverlayWidget.ui
           processlauncherwidget.cpp
+          ProfilingTargetDialog.cpp
+          ProfilingTargetDialog.ui
           servicedeploymanager.cpp
           TutorialContent.cpp
           TutorialOverlay.cpp
