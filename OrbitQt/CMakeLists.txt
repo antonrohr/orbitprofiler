@@ -13,6 +13,7 @@ target_sources(
   PRIVATE CallTreeViewItemModel.h
           CallTreeWidget.h
           ConnectionConfiguration.h
+          ConnectToStadiaWidget.h
           CopyKeySequenceEnabledTreeView.h
           CutoutWidget.h
           DeploymentConfigurations.h

@@ -10,7 +10,7 @@
 #include <QWidget>
 #include <memory>
 
-#include "ConnectionArtifacts.h"
+#include "ConnectionConfiguration.h"
 #include "OrbitBase/Logging.h"
 #include "OrbitGgp/Client.h"
 #include "OrbitGgp/InstanceItemModel.h"
@@ -20,14 +20,20 @@ namespace orbit_qt {
 
 class ConnectToStadiaWidget : public QWidget {
   Q_OBJECT
+  Q_PROPERTY(bool active READ IsActive WRITE SetActive)
 
  public:
   explicit ConnectToStadiaWidget(QWidget* parent = nullptr);
-  // This needs to be called before this class can be used.
-  void SetConnectionArtifacts(ConnectionArtifacts* connection_artifacts);
+  // This needs to be called before this class can be used. (It is not part of the constructor,
+  // because otherwise this class could not be instantiated from a .ui file)
+  void SetStadiaConnection(StadiaConnection* stadia_connection);
+  bool IsActive() { return ui_->contentFrame->isEnabled(); }
+
+ public slots:
+  void SetActive(bool value);
 
  signals:
-  void Selected();
+  void Activated();
   void Connected();
   void Disconnected();
 
@@ -45,14 +51,16 @@ class ConnectToStadiaWidget : public QWidget {
   void ReadyToDeploy();
   void Connect();
 
+ protected:
+  bool eventFilter(QObject* obj, QEvent* event) override;
+
  private:
   std::unique_ptr<Ui::ConnectToStadiaWidget> ui_;
-  ConnectionArtifacts* connection_artifacts_ = nullptr;
+  StadiaConnection* stadia_connection_ = nullptr;
   OrbitGgp::InstanceItemModel instance_model_;
   QStateMachine state_machine_;
   QPointer<OrbitGgp::Client> ggp_client_ = nullptr;
   std::optional<QString> remembered_instance_id_;
-  QSettings settings_;
 
   absl::flat_hash_map<std::string, ErrorMessageOr<OrbitSsh::Credentials>> instance_credentials_;
 
