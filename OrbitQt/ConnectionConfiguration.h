@@ -5,6 +5,8 @@
 #ifndef ORBIT_QT_CONNECTION_CONFIGURATION_H_
 #define ORBIT_QT_CONNECTION_CONFIGURATION_H_
 
+#include <stdint.h>
+
 #include <memory>
 #include <utility>
 
@@ -15,7 +17,11 @@
 #include "OrbitGgp/Instance.h"
 #include "OrbitSsh/Context.h"
 #include "OrbitSsh/Credentials.h"
+#include "absl/strings/str_format.h"
 #include "grpcpp/channel.h"
+#include "grpcpp/create_channel.h"
+#include "grpcpp/security/credentials.h"
+#include "grpcpp/support/channel_arguments.h"
 #include "servicedeploymanager.h"
 
 namespace orbit_qt {
@@ -53,9 +59,14 @@ struct StadiaConnection {
 
 struct LocalConnection {
  public:
-  explicit LocalConnection(const OrbitSsh::Context* ssh_context) : ssh_context(ssh_context) {}
-
-  const OrbitSsh::Context* ssh_context;
+  explicit LocalConnection(const uint16_t grpc_port) : grpc_port(grpc_port) {}
+  void CreateGrpcChannel() {
+    CHECK(grpc_channel == nullptr);
+    std::string grpc_server_address = absl::StrFormat("127.0.0.1:%d", grpc_port);
+    grpc_channel = grpc::CreateCustomChannel(
+        grpc_server_address, grpc::InsecureChannelCredentials(), grpc::ChannelArguments());
+  }
+  const uint16_t grpc_port;
 
   std::shared_ptr<grpc::Channel> grpc_channel;
   std::unique_ptr<ProcessManager> process_manager;

@@ -39,12 +39,14 @@ class ProfilingTargetDialog : public QDialog {
   void LoadStadiaProcesses();
   void ResetStadiaProcessManager();
   void ProcessSelectionChanged(const QModelIndex& current);
+  void ConnectToLocal();
 
  signals:
   void FileSelected();
   void ProcessSelected();
   void NoProcessSelected();
   void StadiaWidgetIsConnected();
+  void LocalIsConnected();
 
  private:
   std::unique_ptr<Ui::ProfilingTargetDialog> ui_;
@@ -55,6 +57,7 @@ class ProfilingTargetDialog : public QDialog {
 
   MainThreadExecutor* main_thread_executor_;
   StadiaConnection stadia_connection_;
+  LocalConnection local_connection_;
   NoConnection no_connection_;
   ConnectionConfiguration* connection_configuration_;
 

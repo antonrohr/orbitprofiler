@@ -201,10 +201,11 @@ void RunBetaUiInstance(QApplication* app,
                        std::optional<DeploymentConfiguration> deployment_configuration,
                        const Context* ssh_context) {
   qRegisterMetaType<std::error_code>();
-  // TODO(170468590) handle --local flag
+
+  // TODO(170468590) handle --local flag more gracefully. Deployment and Connection should be
+  // independent
   if (!deployment_configuration) {
-    ERROR("--local flag not supported by UI beta");
-    return;
+    deployment_configuration = orbit_qt::NoDeployment{};
   }
 
   const GrpcPort grpc_port{/*.grpc_port =*/absl::GetFlag(FLAGS_grpc_port)};

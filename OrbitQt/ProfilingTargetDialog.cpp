@@ -25,11 +25,18 @@
 #include "OverlayWidget.h"
 #include "Path.h"
 #include "ProcessItemModel.h"
+#include "absl/flags/flag.h"
+#include "grpc/impl/codegen/grpc_types.h"
 #include "process.pb.h"
+#include "qobject.h"
+#include "qradiobutton.h"
+
+ABSL_DECLARE_FLAG(bool, local);
 
 namespace {
 const int kProcessesRowHeight = 19;
-}
+const int kLocalTryConnectTimeoutMs = 1000;
+}  // namespace
 
 namespace orbit_qt {
 
@@ -44,6 +51,7 @@ ProfilingTargetDialog::ProfilingTargetDialog(
       ui_(std::make_unique<Ui::ProfilingTargetDialog>()),
       main_thread_executor_(main_thread_executor),
       stadia_connection_(ssh_context, grpc_port, deployment_configuration),
+      local_connection_(grpc_port.grpc_port),
       connection_configuration_(connection_configuration) {
   CHECK(main_thread_executor_ != nullptr);
   CHECK(connection_configuration_ != nullptr);
@@ -53,6 +61,7 @@ ProfilingTargetDialog::ProfilingTargetDialog(
   ui_->stadiaWidget->SetStadiaConnection(&stadia_connection_);
 
   SetupStateMachine();
+  state_machine_.start();
 
   process_proxy_model_.setSourceModel(&process_model_);
   process_proxy_model_.setSortRole(Qt::EditRole);
@@ -75,6 +84,10 @@ ProfilingTargetDialog::ProfilingTargetDialog(
   QObject::connect(ui_->loadCaptureRadioButton, &QRadioButton::clicked, this, [this](bool checked) {
     if (!checked) ui_->loadCaptureRadioButton->setChecked(true);
   });
+  QObject::connect(ui_->localProfilingRadioButton, &QRadioButton::clicked, this,
+                   [this](bool checked) {
+                     if (!checked) ui_->localProfilingRadioButton->setChecked(true);
+                   });
   QObject::connect(ui_->processesTableView->selectionModel(), &QItemSelectionModel::currentChanged,
                    this, &ProfilingTargetDialog::ProcessSelectionChanged);
   QObject::connect(ui_->processesTableView, &QTableView::doubleClicked, this, &QDialog::accept);
@@ -142,6 +155,20 @@ void ProfilingTargetDialog::SetupStateMachine() {
   s_capture->setInitialState(s_c_no_file_selected);
   s_c_history->setDefaultState(s_c_no_file_selected);
 
+  // STATE s_local
+  auto s_local = new QState();
+  state_machine_.addState(s_local);
+  auto* s_l_history = new QHistoryState(s_local);
+
+  // s_local Child States
+  auto s_l_connecting = new QState(s_local);
+  auto s_l_connection_failed = new QState(s_local);
+  auto s_l_connected = new QState(s_local);
+  // auto s_l_processes_loaded = new QState(s_local);
+  // auto s_l_process_selected = new QState(s_local);
+  s_local->setInitialState(s_l_connecting);
+  s_l_history->setDefaultState(s_l_connecting);
+
   // PROPERTIES of states
   // STATE s_stadia
   s_stadia->assignProperty(ui_->confirmButton, "text", "Confirm Process");
@@ -150,8 +177,6 @@ void ProfilingTargetDialog::SetupStateMachine() {
                            "Please connect to an instance and select a process.");
   s_stadia->assignProperty(ui_->stadiaWidget, "active", true);
   s_stadia->assignProperty(ui_->loadCaptureRadioButton, "checked", false);
-  QObject::connect(s_stadia, &QState::entered,
-                   [this]() { *connection_configuration_ = &stadia_connection_; });
 
   // STATE s_capture
   s_capture->assignProperty(ui_->confirmButton, "text", "Load Capture");
@@ -159,8 +184,11 @@ void ProfilingTargetDialog::SetupStateMachine() {
   s_capture->assignProperty(ui_->loadCaptureRadioButton, "checked", true);
   s_capture->assignProperty(ui_->processesFrame, "enabled", false);
   s_capture->assignProperty(ui_->loadFromFileButton, "enabled", true);
-  QObject::connect(s_capture, &QState::entered,
-                   [this]() { *connection_configuration_ = &no_connection_; });
+
+  // STATE s_local
+  s_local->assignProperty(ui_->localFrame, "visible", true);
+  s_local->assignProperty(ui_->localProfilingRadioButton, "checked", true);
+  s_local->assignProperty(ui_->stadiaWidget, "active", false);
 
   // STATE s_s_connecting
   s_s_connecting->assignProperty(ui_->processesFrame, "enabled", false);
@@ -181,14 +209,32 @@ void ProfilingTargetDialog::SetupStateMachine() {
   // STATE s_c_file_selected
   s_c_file_selected->assignProperty(ui_->confirmButton, "enabled", true);
 
+  // STATE s_l_connecting
+  s_l_connecting->assignProperty(ui_->localProfilingStatusMessage, "text", "Connecting...");
+
+  // STATE s_l_connection_failed
+  s_l_connection_failed->assignProperty(ui_->localProfilingStatusMessage, "text",
+                                        "Connection failed");
+
+  // STATE s_l_connected
+  s_l_connected->assignProperty(ui_->localProfilingStatusMessage, "text", "Connected");
+
   // TRANSITIONS (and entered/exit events)
   // STATE s_stadia
   s_stadia->addTransition(ui_->loadCaptureRadioButton, &QRadioButton::clicked, s_c_history);
   s_stadia->addTransition(ui_->stadiaWidget, &ConnectToStadiaWidget::Disconnected, s_s_connecting);
+  QObject::connect(s_stadia, &QState::entered,
+                   [this]() { *connection_configuration_ = &stadia_connection_; });
 
   // STATE s_capture
   s_capture->addTransition(ui_->stadiaWidget, &ConnectToStadiaWidget::Activated, s_s_history);
   s_capture->addTransition(this, &ProfilingTargetDialog::FileSelected, s_c_file_selected);
+  QObject::connect(s_capture, &QState::entered,
+                   [this]() { *connection_configuration_ = &no_connection_; });
+
+  // STATE s_local
+  QObject::connect(s_local, &QState::entered,
+                   [this] { *connection_configuration_ = &local_connection_; });
 
   // STATE s_s_connecting
   s_s_connecting->addTransition(ui_->stadiaWidget, &ConnectToStadiaWidget::Connected,
@@ -216,14 +262,23 @@ void ProfilingTargetDialog::SetupStateMachine() {
     if (no_connection_.capture_file_path.empty()) SelectFile();
   });
 
-  // -- START state machine
+  // STATE s_l_connecting
+  s_l_connecting->addTransition(this, &ProfilingTargetDialog::LocalIsConnected, s_l_connected);
+  QObject::connect(s_l_connecting, &QState::entered, this, &ProfilingTargetDialog::ConnectToLocal);
+
+  // -- Set initial state
+
+  if (absl::GetFlag(FLAGS_local)) {
+    state_machine_.setInitialState(s_local);
+    return;
+  }
 
   if (ui_->stadiaWidget->IsActive()) {
     state_machine_.setInitialState(s_stadia);
-  } else {
-    state_machine_.setInitialState(s_capture);
+    return;
   }
-  state_machine_.start();
+
+  state_machine_.setInitialState(s_capture);
 }
 
 void ProfilingTargetDialog::ResetStadiaProcessManager() {
@@ -271,8 +326,23 @@ void ProfilingTargetDialog::SelectFile() {
     std::filesystem::path file_path = std::filesystem::path(file.toStdString());
     no_connection_.capture_file_path = file_path;
 
-    ui_->chosen_file_label->setText(QString::fromStdString(file_path.filename().string()));
+    ui_->chosenFileLabel->setText(QString::fromStdString(file_path.filename().string()));
     emit FileSelected();
+  }
+}
+
+void ProfilingTargetDialog::ConnectToLocal() {
+  if (local_connection_.grpc_channel == nullptr) {
+    local_connection_.CreateGrpcChannel();
+  }
+
+  if (local_connection_.grpc_channel->GetState(true) == GRPC_CHANNEL_READY) {
+    LOG("local grpc connection successful");
+    emit LocalIsConnected();
+  } else {
+    LOG("Local grpc connection not ready, Trying to connect to local again in %d ms.",
+        kLocalTryConnectTimeoutMs);
+    QTimer::singleShot(kLocalTryConnectTimeoutMs, this, &ProfilingTargetDialog::ConnectToLocal);
   }
 }
 
