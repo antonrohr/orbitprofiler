@@ -39,6 +39,7 @@ target_sources(
           processlauncherwidget.h
           resource.h
           servicedeploymanager.h
+          TargetConfiguration.h
           TutorialContent.h
           TutorialOverlay.h)
 
