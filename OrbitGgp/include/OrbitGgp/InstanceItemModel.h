@@ -19,6 +19,8 @@ namespace OrbitGgp {
 
 class InstanceItemModel : public QAbstractItemModel {
  public:
+  enum class Columns { kDisplayName, kId, kIpAddress, kLastUpdated, kOwner, kPool, kEnd };
+
   explicit InstanceItemModel(QVector<Instance> instances = {}, QObject* parent = nullptr);
 
   void SetInstances(QVector<Instance> instances);
@@ -30,8 +32,6 @@ class InstanceItemModel : public QAbstractItemModel {
   [[nodiscard]] QModelIndex index(int row, int col, const QModelIndex& parent = {}) const override;
   [[nodiscard]] QModelIndex parent(const QModelIndex& parent) const override;
   [[nodiscard]] int rowCount(const QModelIndex& parent = {}) const override;
-
-  [[nodiscard]] std::optional<int> GetRowOfInstanceById(const QString& instance_id);
 
  private:
   QVector<Instance> instances_;

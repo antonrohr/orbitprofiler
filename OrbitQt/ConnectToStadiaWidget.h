@@ -10,13 +10,15 @@
 #include <QVector>
 #include <QWidget>
 #include <memory>
+#include <optional>
 
-#include "ConnectionConfiguration.h"
+#include "Connections.h"
 #include "OrbitBase/Logging.h"
 #include "OrbitGgp/Client.h"
 #include "OrbitGgp/Instance.h"
 #include "OrbitGgp/InstanceItemModel.h"
 #include "OrbitGgp/SshInfo.h"
+#include "servicedeploymanager.h"
 #include "ui_ConnectToStadiaWidget.h"
 
 namespace orbit_qt {
@@ -27,10 +29,12 @@ class ConnectToStadiaWidget : public QWidget {
 
  public:
   explicit ConnectToStadiaWidget(QWidget* parent = nullptr);
-  // This needs to be called before this class can be used. (It is not part of the constructor,
-  // because otherwise this class could not be instantiated from a .ui file)
-  void SetStadiaConnection(StadiaConnection* stadia_connection);
-  bool IsActive() { return ui_->contentFrame->isEnabled(); }
+  void SetSshArtifacts(SshConnectionArtifacts* ssh_connection_artifacts);
+  void SetConnection(StadiaConnection stadia_connection);
+  [[nodiscard]] std::optional<StadiaConnection> StopAndClearConnection();
+  [[nodiscard]] bool IsActive() const { return ui_->contentFrame->isEnabled(); }
+  [[nodiscard]] const std::shared_ptr<grpc::Channel>& GetGrpcChannel() { return grpc_channel_; }
+  void Start();
 
  public slots:
   void SetActive(bool value);
@@ -58,22 +62,27 @@ class ConnectToStadiaWidget : public QWidget {
   void ReadyToDeploy();
   void Connect();
 
- protected:
-  bool eventFilter(QObject* obj, QEvent* event) override;
-
  private:
   std::unique_ptr<Ui::ConnectToStadiaWidget> ui_;
-  StadiaConnection* stadia_connection_ = nullptr;
   OrbitGgp::InstanceItemModel instance_model_;
-  QStateMachine state_machine_;
+  SshConnectionArtifacts* ssh_connection_artifacts_ = nullptr;
+  std::optional<OrbitGgp::Instance> selected_instance_;
+  std::unique_ptr<ServiceDeployManager> service_deploy_manager_;
+  std::shared_ptr<grpc::Channel> grpc_channel_;
   QPointer<OrbitGgp::Client> ggp_client_ = nullptr;
   std::optional<QString> remembered_instance_id_;
 
+  // State Machine
+  QStateMachine state_machine_;
+  QState* s_instances_loading_ = nullptr;
+  QState* s_connected_ = nullptr;
+
   absl::flat_hash_map<std::string, ErrorMessageOr<OrbitSsh::Credentials>> instance_credentials_;
 
-  void SetupAndStartStateMachine();
+  void SetupStateMachine();
   void OnInstancesLoaded(outcome::result<QVector<OrbitGgp::Instance>> instances);
   void OnSshInfoLoaded(outcome::result<OrbitGgp::SshInfo> ssh_info_result, std::string instance_id);
+  void TrySelectRememberedInstance();
 };
 
 }  // namespace orbit_qt

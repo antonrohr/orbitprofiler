@@ -6,9 +6,7 @@
 
 #include <iterator>
 
-namespace {
-enum class Columns { DisplayName, ID, IPAddress, LastUpdated, Owner, Pool, NumberOfColumns };
-}  // namespace
+#include "OrbitBase/Logging.h"
 
 namespace OrbitGgp {
 
@@ -18,7 +16,7 @@ InstanceItemModel::InstanceItemModel(QVector<Instance> instances, QObject* paren
 }
 
 int InstanceItemModel::columnCount(const QModelIndex& parent) const {
-  return parent.isValid() ? 0 : static_cast<int>(Columns::NumberOfColumns);
+  return parent.isValid() ? 0 : static_cast<int>(Columns::kEnd);
 }
 
 QVariant InstanceItemModel::data(const QModelIndex& index, int role) const {
@@ -33,19 +31,19 @@ QVariant InstanceItemModel::data(const QModelIndex& index, int role) const {
   if (role != Qt::DisplayRole) return {};
 
   switch (static_cast<Columns>(index.column())) {
-    case Columns::DisplayName:
+    case Columns::kDisplayName:
       return current_instance.display_name;
-    case Columns::ID:
+    case Columns::kId:
       return current_instance.id;
-    case Columns::IPAddress:
+    case Columns::kIpAddress:
       return current_instance.ip_address;
-    case Columns::LastUpdated:
+    case Columns::kLastUpdated:
       return current_instance.last_updated.toString(Qt::TextDate);
-    case Columns::Owner:
+    case Columns::kOwner:
       return current_instance.owner;
-    case Columns::Pool:
+    case Columns::kPool:
       return current_instance.pool;
-    case Columns::NumberOfColumns:
+    case Columns::kEnd:
       CHECK(false);
       return {};
   }
@@ -57,7 +55,7 @@ QVariant InstanceItemModel::data(const QModelIndex& index, int role) const {
 QModelIndex InstanceItemModel::index(int row, int col, const QModelIndex& parent) const {
   if (parent.isValid()) return {};
   if (row < 0 || row >= instances_.size()) return {};
-  if (col < 0 || col >= static_cast<int>(Columns::NumberOfColumns)) return {};
+  if (col < 0 || col >= static_cast<int>(Columns::kEnd)) return {};
 
   return createIndex(row, col, nullptr);
 }
@@ -65,25 +63,25 @@ QModelIndex InstanceItemModel::index(int row, int col, const QModelIndex& parent
 QVariant InstanceItemModel::headerData(int section, Qt::Orientation orientation, int role) const {
   if (role != Qt::DisplayRole) return {};
   if (orientation != Qt::Horizontal) return {};
-  if (section < 0 || section >= static_cast<int>(Columns::NumberOfColumns)) {
+  if (section < 0 || section >= static_cast<int>(Columns::kEnd)) {
     return {};
   }
 
   switch (static_cast<Columns>(section)) {
-    case Columns::DisplayName:
+    case Columns::kDisplayName:
       return QLatin1String("Display Name");
-    case Columns::ID:
+    case Columns::kId:
       return QLatin1String("ID");
-    case Columns::IPAddress:
+    case Columns::kIpAddress:
       return QLatin1String("IP Address");
-    case Columns::LastUpdated:
+    case Columns::kLastUpdated:
       return QLatin1String("Last Updated");
-    case Columns::Owner:
+    case Columns::kOwner:
       return QLatin1String("Owner");
-    case Columns::Pool:
+    case Columns::kPool:
       return QLatin1String("Pool");
-    case Columns::NumberOfColumns:
-      CHECK(false);
+    case Columns::kEnd:
+      UNREACHABLE();
       return {};
   }
 
@@ -112,7 +110,7 @@ void InstanceItemModel::SetInstances(QVector<Instance> new_instances) {
       if (*old_iter != *new_iter) {
         *old_iter = *new_iter;
         emit dataChanged(index(current_row, 0, {}),
-                         index(current_row, static_cast<int>(Columns::NumberOfColumns) - 1, {}));
+                         index(current_row, static_cast<int>(Columns::kEnd) - 1, {}));
       }
       ++old_iter;
       ++new_iter;
@@ -140,16 +138,6 @@ void InstanceItemModel::SetInstances(QVector<Instance> new_instances) {
     CHECK(old_instances.size() == new_instances.size());
     endRemoveRows();
   }
-}
-
-std::optional<int> InstanceItemModel::GetRowOfInstanceById(const QString& instance_id) {
-  const auto it =
-      std::find_if(instances_.begin(), instances_.end(),
-                   [&instance_id](const Instance& instance) { return instance.id == instance_id; });
-
-  if (it == instances_.end()) return std::nullopt;
-
-  return std::distance(instances_.begin(), it);
 }
 
 }  // namespace OrbitGgp
