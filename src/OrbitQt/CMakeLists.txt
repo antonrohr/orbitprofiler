@@ -13,6 +13,7 @@ target_sources(
   PRIVATE AccessibilityAdapter.h
           CallTreeViewItemModel.h
           CallTreeWidget.h
+          CaptureFileItemModel.h
           CaptureOptionsDialog.h
           Connections.h
           ConnectToStadiaWidget.h
@@ -24,6 +25,7 @@ target_sources(
           EventLoop.h
           FilterPanelWidget.h
           FilterPanelWidgetAction.h
+          LoadCaptureWidget.h
           orbitaboutdialog.h
           orbitdataviewpanel.h
           orbiteventiterator.h
@@ -49,6 +51,7 @@ target_sources(
           CallTreeViewItemModel.cpp
           CallTreeWidget.cpp
           CallTreeWidget.ui
+          CaptureFileItemModel.cpp
           CaptureOptionsDialog.cpp
           CaptureOptionsDialog.ui
           ConnectToStadiaWidget.cpp
@@ -59,6 +62,8 @@ target_sources(
           FilterPanelWidgetAction.cpp
           StatusListenerImpl.cpp
           DeploymentConfigurations.cpp
+          LoadCaptureWidget.cpp
+          LoadCaptureWidget.ui
           main.cpp
           orbitaboutdialog.cpp
           orbitaboutdialog.ui

@@ -117,16 +117,17 @@ ProfilingTargetDialog::ProfilingTargetDialog(
     ui_->localFrame->setVisible(true);
   }
 
-  QObject::connect(ui_->loadFromFileButton, &QPushButton::clicked, this,
-                   &ProfilingTargetDialog::SelectFile);
+  // QObject::connect(ui_->loadFromFileButton, &QPushButton::clicked, this,
+  //                  &ProfilingTargetDialog::SelectFile);
   // This and the next connect makes the radiobuttons behave as if they were in a exclusive button
   // group. If a user clicks on one of these and it was not checked before, it is checked afterwards
   // and the state machine transitions into the correct state, which "unchecks" the other buttons.
   // If a user clicks on a radio button that is already checked, simply nothing happens, the button
   // does not get unchecked.
-  QObject::connect(ui_->loadCaptureRadioButton, &QRadioButton::clicked, this, [this](bool checked) {
-    if (!checked) ui_->loadCaptureRadioButton->setChecked(true);
-  });
+  // QObject::connect(ui_->loadCaptureRadioButton, &QRadioButton::clicked, this, [this](bool
+  // checked) {
+  //   if (!checked) ui_->loadCaptureRadioButton->setChecked(true);
+  // });
   QObject::connect(ui_->localProfilingRadioButton, &QRadioButton::clicked, this,
                    [this](bool checked) {
                      if (!checked) ui_->localProfilingRadioButton->setChecked(true);
@@ -208,7 +209,7 @@ void ProfilingTargetDialog::SetupStadiaStates() {
   state_stadia_.assignProperty(ui_->confirmButton, "toolTip",
                                "Please connect to an instance and select a process.");
   state_stadia_.assignProperty(ui_->stadiaWidget, "active", true);
-  state_stadia_.assignProperty(ui_->loadCaptureRadioButton, "checked", false);
+  // state_stadia_.assignProperty(ui_->loadCaptureRadioButton, "checked", false);
   state_stadia_.assignProperty(ui_->localProfilingRadioButton, "checked", false);
   state_stadia_.assignProperty(ui_->targetLabel, "text", "");
 
@@ -227,8 +228,8 @@ void ProfilingTargetDialog::SetupStadiaStates() {
 
   // TRANSITIONS (and entered/exit events)
   // STATE state_stadia_
-  state_stadia_.addTransition(ui_->loadCaptureRadioButton, &QRadioButton::clicked,
-                              &state_file_history_);
+  // state_stadia_.addTransition(ui_->loadCaptureRadioButton, &QRadioButton::clicked,
+  //                             &state_file_history_);
   state_stadia_.addTransition(ui_->localProfilingRadioButton, &QRadioButton::clicked,
                               &state_local_history_);
   state_stadia_.addTransition(ui_->stadiaWidget, &ConnectToStadiaWidget::Disconnected,
@@ -285,7 +286,7 @@ void ProfilingTargetDialog::SetupLocalStates() {
       "Please have a OrbitService run on the local machine and select a process.");
   state_local_.assignProperty(ui_->localProfilingRadioButton, "checked", true);
   state_local_.assignProperty(ui_->stadiaWidget, "active", false);
-  state_local_.assignProperty(ui_->loadCaptureRadioButton, "checked", false);
+  // state_local_.assignProperty(ui_->loadCaptureRadioButton, "checked", false);
   state_local_.assignProperty(ui_->targetLabel, "text", "");
 
   // STATE state_local_connecting_
@@ -312,8 +313,8 @@ void ProfilingTargetDialog::SetupLocalStates() {
   // STATE state_local_
   state_local_.addTransition(ui_->stadiaWidget, &ConnectToStadiaWidget::Activated,
                              &state_stadia_history_);
-  state_local_.addTransition(ui_->loadCaptureRadioButton, &QRadioButton::clicked,
-                             &state_file_history_);
+  // state_local_.addTransition(ui_->loadCaptureRadioButton, &QRadioButton::clicked,
+  //                            &state_file_history_);
 
   // STATE state_local_connecting_
   state_local_connecting_.addTransition(this, &ProfilingTargetDialog::ProcessListUpdated,
@@ -367,9 +368,9 @@ void ProfilingTargetDialog::SetupFileStates() {
   state_file_.assignProperty(ui_->confirmButton, "enabled", false);
   state_file_.assignProperty(ui_->confirmButton, "toolTip", "Please select a capture to load");
   state_file_.assignProperty(ui_->stadiaWidget, "active", false);
-  state_file_.assignProperty(ui_->loadCaptureRadioButton, "checked", true);
+  // state_file_.assignProperty(ui_->loadCaptureRadioButton, "checked", true);
   state_file_.assignProperty(ui_->processesFrame, "enabled", false);
-  state_file_.assignProperty(ui_->loadFromFileButton, "enabled", true);
+  // state_file_.assignProperty(ui_->loadFromFileButton, "enabled", true);
   state_file_.assignProperty(ui_->localProfilingRadioButton, "checked", false);
   state_file_.assignProperty(ui_->targetLabel, "text", "");
 
@@ -393,7 +394,7 @@ void ProfilingTargetDialog::SetupFileStates() {
   // STATE state_file_selected_
   QObject::connect(&state_file_selected_, &QState::entered, this, [this] {
     QString filename = QString::fromStdString(selected_file_path_.filename().string());
-    ui_->selectedFileLabel->setText(filename);
+    // ui_->selectedFileLabel->setText(filename);
     ui_->targetLabel->setText(filename);
   });
 }
